@@ -1,0 +1,10 @@
+[tools]
+"npm:@marp-team/marp-cli" = "4.4.0"
+
+[tasks."slides"]
+description = "Build presentation slides to docs/presentations"
+run = "marp docs/presentations/presentation.md --html --output docs/presentations/presentation.html"
+
+[tasks."slides:watch"]
+description = "Serve presentation slides with live reload"
+run = "marp --server docs/presentations/"
