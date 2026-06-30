@@ -8,6 +8,8 @@ import com.ziggy.insurance.domains.policy.auto.AutoPolicyWorkflow;
 import com.ziggy.insurance.domains.policy.commercial.CommercialPolicyInput;
 import com.ziggy.insurance.domains.policy.commercial.CommercialPolicyState;
 import com.ziggy.insurance.domains.policy.commercial.CommercialPolicyWorkflow;
+import com.ziggy.insurance.domains.demo.DemoSetupResult;
+import com.ziggy.insurance.domains.demo.SetupDemoEnvironmentWorkflow;
 import com.ziggy.insurance.domains.policy.models.AdditionalInsured;
 import com.ziggy.insurance.domains.policy.models.Driver;
 import com.ziggy.insurance.domains.policy.models.LossPayee;
@@ -223,6 +225,18 @@ public class PolicyService {
     public void completeCommercialRenewal(String policyId) {
         workflowClient.newWorkflowStub(CommercialPolicyWorkflow.class,
             workflowId("commercial", policyId)).completeRenewal();
+    }
+
+    // --- Demo setup ---
+
+    public DemoSetupResult setupDemoEnvironment() {
+        SetupDemoEnvironmentWorkflow wf = workflowClient.newWorkflowStub(
+            SetupDemoEnvironmentWorkflow.class,
+            WorkflowOptions.newBuilder()
+                .setTaskQueue(TaskQueues.POLICY_TASK_QUEUE)
+                .setWorkflowId("demo/setup")
+                .build());
+        return wf.run();
     }
 
     // --- List all policies ---

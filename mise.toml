@@ -9,7 +9,7 @@ description = "Run a local Temporal dev server"
 run = "temporal server start-dev"
 
 [tasks."temporal:test"]
-description = "Run Temporal Java workflow tests"
+description = "Run all Java tests"
 run = "gradle test"
 
 [tasks."temporal:worker"]
