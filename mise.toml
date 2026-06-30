@@ -16,10 +16,6 @@ run = "gradle test"
 description = "Run the Spring Boot Temporal worker against the local dev server"
 run = "gradle bootRun"
 
-[tasks."temporal:hello"]
-description = "Start the Spring Boot worker and execute the policy HelloWorldWorkflow"
-run = "gradle bootRun --args='--run-hello-world=Policy'"
-
 [tasks."slides"]
 description = "Build presentation slides to docs/presentations"
 run = "marp docs/presentations/presentation.md --html --output docs/presentations/presentation.html"

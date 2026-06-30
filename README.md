@@ -29,14 +29,12 @@ Run unit tests with Temporal's in-memory test environment:
 mise run temporal:test
 ```
 
-Run against a local Temporal dev server:
+Run the Temporal worker against a local Temporal dev server:
 
 ```bash
 mise run temporal:dev-server
-mise run temporal:hello
+mise run temporal:worker
 ```
-
-`temporal:hello` starts the Spring Boot worker, runs `HelloWorldWorkflow`, and prints the completed greeting.
 
 ## Usage
 
