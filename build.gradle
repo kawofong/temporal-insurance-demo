@@ -20,7 +20,7 @@ configurations {
 }
 
 dependencies {
-    implementation 'org.springframework.boot:spring-boot-starter'
+    implementation 'org.springframework.boot:spring-boot-starter-web'
     implementation 'io.temporal:temporal-sdk:1.36.0'
     implementation 'io.temporal:temporal-spring-boot-starter:1.36.0'
 

@@ -16,6 +16,10 @@ run = "gradle test"
 description = "Run the Spring Boot Temporal worker against the local dev server"
 run = "gradle bootRun"
 
+[tasks."temporal:api"]
+description = "Run the Spring Boot HTTP API server against the local dev server"
+run = "gradle bootRun"
+
 [tasks."slides"]
 description = "Build presentation slides to docs/presentations"
 run = "marp docs/presentations/presentation.md --html --output docs/presentations/presentation.html"
