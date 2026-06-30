@@ -1,6 +1,24 @@
 [tools]
+java = "21.0.2"
+gradle = "8.14.4"
 node = "22"
 "npm:@marp-team/marp-cli" = "4.4.0"
+
+[tasks."temporal:dev-server"]
+description = "Run a local Temporal dev server"
+run = "temporal server start-dev"
+
+[tasks."temporal:test"]
+description = "Run Temporal Java workflow tests"
+run = "gradle test"
+
+[tasks."temporal:worker"]
+description = "Run the Spring Boot Temporal worker against the local dev server"
+run = "gradle bootRun"
+
+[tasks."temporal:hello"]
+description = "Start the Spring Boot worker and execute the policy HelloWorldWorkflow"
+run = "gradle bootRun --args='--run-hello-world=Policy'"
 
 [tasks."slides"]
 description = "Build presentation slides to docs/presentations"
