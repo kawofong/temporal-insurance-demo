@@ -26,7 +26,7 @@ class AutoPolicyWorkflowTest {
     private static final Driver SARAH = new Driver("D-002", "Sarah", "DL-67890");
 
     private AutoPolicyInput testInput() {
-        return new AutoPolicyInput("POL-AUTO-001", 1700000000L, 1731536000L, List.of(), List.of());
+        return new AutoPolicyInput("POL-AUTO-001", "PH-001", 1700000000L, 1731536000L, List.of(), List.of());
     }
 
     private WorkflowOptions workflowOptions(String workflowId) {
@@ -52,6 +52,7 @@ class AutoPolicyWorkflowTest {
             AutoPolicyState state = wf.getPolicy();
             assertThat(state.getStatus()).isEqualTo(PolicyStatus.ACTIVE);
             assertThat(state.getPolicyId()).isEqualTo("POL-AUTO-001");
+            assertThat(state.getPolicyHolderId()).isEqualTo("PH-001");
 
             wf.cancelPolicy("done");
         }

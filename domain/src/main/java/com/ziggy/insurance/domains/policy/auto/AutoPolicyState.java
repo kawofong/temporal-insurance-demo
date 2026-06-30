@@ -11,6 +11,7 @@ import java.util.List;
 public class AutoPolicyState {
 
     private String policyId;
+    private String policyHolderId;
     private PolicyStatus status;
     private long effectiveDate;
     private long expiryDate;
@@ -22,6 +23,7 @@ public class AutoPolicyState {
     public static AutoPolicyState fromInput(AutoPolicyInput input) {
         AutoPolicyState state = new AutoPolicyState();
         state.policyId = input.policyId();
+        state.policyHolderId = input.policyHolderId();
         state.status = PolicyStatus.ACTIVE;
         state.effectiveDate = input.effectiveDate();
         state.expiryDate = input.expiryDate();
@@ -36,6 +38,9 @@ public class AutoPolicyState {
 
     public String getPolicyId() { return policyId; }
     public void setPolicyId(String policyId) { this.policyId = policyId; }
+
+    public String getPolicyHolderId() { return policyHolderId; }
+    public void setPolicyHolderId(String policyHolderId) { this.policyHolderId = policyHolderId; }
 
     public PolicyStatus getStatus() { return status; }
     public void setStatus(PolicyStatus status) { this.status = status; }

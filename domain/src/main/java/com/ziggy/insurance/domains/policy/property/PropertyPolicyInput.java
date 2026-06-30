@@ -8,6 +8,7 @@ import java.util.List;
 
 public record PropertyPolicyInput(
     String policyId,
+    String policyHolderId,
     long effectiveDate,
     long expiryDate,
     InsuredProperty property,

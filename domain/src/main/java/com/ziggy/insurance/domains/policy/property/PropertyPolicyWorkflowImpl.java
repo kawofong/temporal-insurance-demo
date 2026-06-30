@@ -4,6 +4,7 @@ package com.ziggy.insurance.domains.policy.property;
 
 import com.ziggy.insurance.domains.policy.models.LossPayee;
 import com.ziggy.insurance.domains.policy.models.PolicyStatus;
+import com.ziggy.insurance.domains.policy.search.PolicySearchAttributes;
 import io.temporal.spring.boot.WorkflowImpl;
 import io.temporal.workflow.Workflow;
 
@@ -16,6 +17,7 @@ public class PropertyPolicyWorkflowImpl implements PropertyPolicyWorkflow {
     @Override
     public void run(PropertyPolicyInput input) {
         this.state = PropertyPolicyState.fromInput(input);
+        PolicySearchAttributes.upsertPolicyHolderId(input.policyHolderId());
         Workflow.await(() -> cancelled);
         state.setStatus(PolicyStatus.CANCELLED);
     }

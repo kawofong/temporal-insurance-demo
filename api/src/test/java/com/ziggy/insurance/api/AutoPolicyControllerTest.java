@@ -77,6 +77,7 @@ class AutoPolicyControllerTest {
         String body = """
             {
                 "policyId": "%s",
+                "policyHolderId": "PH-001",
                 "effectiveDate": 1700000000,
                 "expiryDate": 1731536000,
                 "insuredVehicles": [],

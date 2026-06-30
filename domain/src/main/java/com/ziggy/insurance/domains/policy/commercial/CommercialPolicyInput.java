@@ -7,6 +7,7 @@ import java.util.List;
 
 public record CommercialPolicyInput(
     String policyId,
+    String policyHolderId,
     long effectiveDate,
     long expiryDate,
     String businessName,
