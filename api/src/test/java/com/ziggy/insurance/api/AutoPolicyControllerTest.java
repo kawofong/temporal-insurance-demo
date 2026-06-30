@@ -9,6 +9,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.ziggy.insurance.domains.policy.auto.AutoPolicyState;
 import com.ziggy.insurance.domains.policy.auto.AutoPolicyWorkflowImpl;
 import com.ziggy.insurance.domains.policy.TaskQueues;
+import com.ziggy.insurance.domains.policy.search.PolicySearchAttributes;
+import io.temporal.api.enums.v1.IndexedValueType;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.temporal.client.WorkflowClient;
 import io.temporal.testing.TestWorkflowEnvironment;
@@ -46,6 +48,7 @@ class AutoPolicyControllerTest {
         @Bean
         public TestWorkflowEnvironment testWorkflowEnvironment() {
             testEnv = TestWorkflowEnvironment.newInstance();
+            testEnv.registerSearchAttribute(PolicySearchAttributes.POLICY_HOLDER_ID, IndexedValueType.INDEXED_VALUE_TYPE_KEYWORD);
             Worker worker = testEnv.newWorker(TaskQueues.POLICY_TASK_QUEUE);
             worker.registerWorkflowImplementationTypes(AutoPolicyWorkflowImpl.class);
             testEnv.start();

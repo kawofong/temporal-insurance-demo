@@ -7,6 +7,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.ziggy.insurance.domains.policy.commercial.CommercialPolicyWorkflowImpl;
 import com.ziggy.insurance.domains.policy.TaskQueues;
+import com.ziggy.insurance.domains.policy.search.PolicySearchAttributes;
+import io.temporal.api.enums.v1.IndexedValueType;
 import io.temporal.client.WorkflowClient;
 import io.temporal.testing.TestWorkflowEnvironment;
 import io.temporal.worker.Worker;
@@ -42,6 +44,7 @@ class CommercialPolicyControllerTest {
         @Bean
         public TestWorkflowEnvironment testWorkflowEnvironment() {
             testEnv = TestWorkflowEnvironment.newInstance();
+            testEnv.registerSearchAttribute(PolicySearchAttributes.POLICY_HOLDER_ID, IndexedValueType.INDEXED_VALUE_TYPE_KEYWORD);
             Worker worker = testEnv.newWorker(TaskQueues.POLICY_TASK_QUEUE);
             worker.registerWorkflowImplementationTypes(CommercialPolicyWorkflowImpl.class);
             testEnv.start();

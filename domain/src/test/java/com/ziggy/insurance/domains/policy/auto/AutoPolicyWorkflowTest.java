@@ -9,6 +9,8 @@ import com.ziggy.insurance.domains.policy.models.Driver;
 import com.ziggy.insurance.domains.policy.models.PolicyStatus;
 import com.ziggy.insurance.domains.policy.models.Vehicle;
 import com.ziggy.insurance.domains.policy.TaskQueues;
+import com.ziggy.insurance.domains.policy.search.PolicySearchAttributes;
+import io.temporal.api.enums.v1.IndexedValueType;
 import io.temporal.client.WorkflowClient;
 import io.temporal.client.WorkflowOptions;
 import io.temporal.client.WorkflowStub;
@@ -41,6 +43,7 @@ class AutoPolicyWorkflowTest {
     @Test
     void startsPolicyInActiveState() {
         try (TestWorkflowEnvironment env = TestWorkflowEnvironment.newInstance()) {
+            env.registerSearchAttribute(PolicySearchAttributes.POLICY_HOLDER_ID, IndexedValueType.INDEXED_VALUE_TYPE_KEYWORD);
             Worker worker = env.newWorker(TaskQueues.POLICY_TASK_QUEUE);
             worker.registerWorkflowImplementationTypes(AutoPolicyWorkflowImpl.class);
             env.start();
@@ -61,6 +64,7 @@ class AutoPolicyWorkflowTest {
     @Test
     void suspendsPolicyFromActive() {
         try (TestWorkflowEnvironment env = TestWorkflowEnvironment.newInstance()) {
+            env.registerSearchAttribute(PolicySearchAttributes.POLICY_HOLDER_ID, IndexedValueType.INDEXED_VALUE_TYPE_KEYWORD);
             Worker worker = env.newWorker(TaskQueues.POLICY_TASK_QUEUE);
             worker.registerWorkflowImplementationTypes(AutoPolicyWorkflowImpl.class);
             env.start();
@@ -79,6 +83,7 @@ class AutoPolicyWorkflowTest {
     @Test
     void reactivatesPolicyFromSuspended() {
         try (TestWorkflowEnvironment env = TestWorkflowEnvironment.newInstance()) {
+            env.registerSearchAttribute(PolicySearchAttributes.POLICY_HOLDER_ID, IndexedValueType.INDEXED_VALUE_TYPE_KEYWORD);
             Worker worker = env.newWorker(TaskQueues.POLICY_TASK_QUEUE);
             worker.registerWorkflowImplementationTypes(AutoPolicyWorkflowImpl.class);
             env.start();
@@ -98,6 +103,7 @@ class AutoPolicyWorkflowTest {
     @Test
     void reactivateIgnoredWhenNotSuspended() {
         try (TestWorkflowEnvironment env = TestWorkflowEnvironment.newInstance()) {
+            env.registerSearchAttribute(PolicySearchAttributes.POLICY_HOLDER_ID, IndexedValueType.INDEXED_VALUE_TYPE_KEYWORD);
             Worker worker = env.newWorker(TaskQueues.POLICY_TASK_QUEUE);
             worker.registerWorkflowImplementationTypes(AutoPolicyWorkflowImpl.class);
             env.start();
@@ -116,6 +122,7 @@ class AutoPolicyWorkflowTest {
     @Test
     void initiatesRenewalFromActive() {
         try (TestWorkflowEnvironment env = TestWorkflowEnvironment.newInstance()) {
+            env.registerSearchAttribute(PolicySearchAttributes.POLICY_HOLDER_ID, IndexedValueType.INDEXED_VALUE_TYPE_KEYWORD);
             Worker worker = env.newWorker(TaskQueues.POLICY_TASK_QUEUE);
             worker.registerWorkflowImplementationTypes(AutoPolicyWorkflowImpl.class);
             env.start();
@@ -134,6 +141,7 @@ class AutoPolicyWorkflowTest {
     @Test
     void initiateRenewalIgnoredWhenNotActive() {
         try (TestWorkflowEnvironment env = TestWorkflowEnvironment.newInstance()) {
+            env.registerSearchAttribute(PolicySearchAttributes.POLICY_HOLDER_ID, IndexedValueType.INDEXED_VALUE_TYPE_KEYWORD);
             Worker worker = env.newWorker(TaskQueues.POLICY_TASK_QUEUE);
             worker.registerWorkflowImplementationTypes(AutoPolicyWorkflowImpl.class);
             env.start();
@@ -153,6 +161,7 @@ class AutoPolicyWorkflowTest {
     @Test
     void completesRenewalFromPending() {
         try (TestWorkflowEnvironment env = TestWorkflowEnvironment.newInstance()) {
+            env.registerSearchAttribute(PolicySearchAttributes.POLICY_HOLDER_ID, IndexedValueType.INDEXED_VALUE_TYPE_KEYWORD);
             Worker worker = env.newWorker(TaskQueues.POLICY_TASK_QUEUE);
             worker.registerWorkflowImplementationTypes(AutoPolicyWorkflowImpl.class);
             env.start();
@@ -172,6 +181,7 @@ class AutoPolicyWorkflowTest {
     @Test
     void completeRenewalIgnoredWhenNotPending() {
         try (TestWorkflowEnvironment env = TestWorkflowEnvironment.newInstance()) {
+            env.registerSearchAttribute(PolicySearchAttributes.POLICY_HOLDER_ID, IndexedValueType.INDEXED_VALUE_TYPE_KEYWORD);
             Worker worker = env.newWorker(TaskQueues.POLICY_TASK_QUEUE);
             worker.registerWorkflowImplementationTypes(AutoPolicyWorkflowImpl.class);
             env.start();
@@ -190,6 +200,7 @@ class AutoPolicyWorkflowTest {
     @Test
     void cancelPolicyCompletesWorkflow() {
         try (TestWorkflowEnvironment env = TestWorkflowEnvironment.newInstance()) {
+            env.registerSearchAttribute(PolicySearchAttributes.POLICY_HOLDER_ID, IndexedValueType.INDEXED_VALUE_TYPE_KEYWORD);
             Worker worker = env.newWorker(TaskQueues.POLICY_TASK_QUEUE);
             worker.registerWorkflowImplementationTypes(AutoPolicyWorkflowImpl.class);
             env.start();
@@ -209,6 +220,7 @@ class AutoPolicyWorkflowTest {
     @Test
     void suspendIgnoredWhenCancelled() {
         try (TestWorkflowEnvironment env = TestWorkflowEnvironment.newInstance()) {
+            env.registerSearchAttribute(PolicySearchAttributes.POLICY_HOLDER_ID, IndexedValueType.INDEXED_VALUE_TYPE_KEYWORD);
             Worker worker = env.newWorker(TaskQueues.POLICY_TASK_QUEUE);
             worker.registerWorkflowImplementationTypes(AutoPolicyWorkflowImpl.class);
             env.start();
@@ -231,6 +243,7 @@ class AutoPolicyWorkflowTest {
     @Test
     void addVehicleReturnsUpdatedCount() {
         try (TestWorkflowEnvironment env = TestWorkflowEnvironment.newInstance()) {
+            env.registerSearchAttribute(PolicySearchAttributes.POLICY_HOLDER_ID, IndexedValueType.INDEXED_VALUE_TYPE_KEYWORD);
             Worker worker = env.newWorker(TaskQueues.POLICY_TASK_QUEUE);
             worker.registerWorkflowImplementationTypes(AutoPolicyWorkflowImpl.class);
             env.start();
@@ -253,6 +266,7 @@ class AutoPolicyWorkflowTest {
     @Test
     void addVehicleRejectsDuplicateVin() {
         try (TestWorkflowEnvironment env = TestWorkflowEnvironment.newInstance()) {
+            env.registerSearchAttribute(PolicySearchAttributes.POLICY_HOLDER_ID, IndexedValueType.INDEXED_VALUE_TYPE_KEYWORD);
             Worker worker = env.newWorker(TaskQueues.POLICY_TASK_QUEUE);
             worker.registerWorkflowImplementationTypes(AutoPolicyWorkflowImpl.class);
             env.start();
@@ -276,6 +290,7 @@ class AutoPolicyWorkflowTest {
     @Test
     void removeVehicleSucceeds() {
         try (TestWorkflowEnvironment env = TestWorkflowEnvironment.newInstance()) {
+            env.registerSearchAttribute(PolicySearchAttributes.POLICY_HOLDER_ID, IndexedValueType.INDEXED_VALUE_TYPE_KEYWORD);
             Worker worker = env.newWorker(TaskQueues.POLICY_TASK_QUEUE);
             worker.registerWorkflowImplementationTypes(AutoPolicyWorkflowImpl.class);
             env.start();
@@ -295,6 +310,7 @@ class AutoPolicyWorkflowTest {
     @Test
     void removeVehicleRejectsMissingId() {
         try (TestWorkflowEnvironment env = TestWorkflowEnvironment.newInstance()) {
+            env.registerSearchAttribute(PolicySearchAttributes.POLICY_HOLDER_ID, IndexedValueType.INDEXED_VALUE_TYPE_KEYWORD);
             Worker worker = env.newWorker(TaskQueues.POLICY_TASK_QUEUE);
             worker.registerWorkflowImplementationTypes(AutoPolicyWorkflowImpl.class);
             env.start();
@@ -317,6 +333,7 @@ class AutoPolicyWorkflowTest {
     @Test
     void addDriverSignalAddsDriver() {
         try (TestWorkflowEnvironment env = TestWorkflowEnvironment.newInstance()) {
+            env.registerSearchAttribute(PolicySearchAttributes.POLICY_HOLDER_ID, IndexedValueType.INDEXED_VALUE_TYPE_KEYWORD);
             Worker worker = env.newWorker(TaskQueues.POLICY_TASK_QUEUE);
             worker.registerWorkflowImplementationTypes(AutoPolicyWorkflowImpl.class);
             env.start();
@@ -336,6 +353,7 @@ class AutoPolicyWorkflowTest {
     @Test
     void removeDriverSignalRemovesDriver() {
         try (TestWorkflowEnvironment env = TestWorkflowEnvironment.newInstance()) {
+            env.registerSearchAttribute(PolicySearchAttributes.POLICY_HOLDER_ID, IndexedValueType.INDEXED_VALUE_TYPE_KEYWORD);
             Worker worker = env.newWorker(TaskQueues.POLICY_TASK_QUEUE);
             worker.registerWorkflowImplementationTypes(AutoPolicyWorkflowImpl.class);
             env.start();

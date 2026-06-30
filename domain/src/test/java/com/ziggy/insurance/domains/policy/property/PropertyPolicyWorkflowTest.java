@@ -9,6 +9,8 @@ import com.ziggy.insurance.domains.policy.models.InsuredProperty;
 import com.ziggy.insurance.domains.policy.models.LossPayee;
 import com.ziggy.insurance.domains.policy.models.PolicyStatus;
 import com.ziggy.insurance.domains.policy.TaskQueues;
+import com.ziggy.insurance.domains.policy.search.PolicySearchAttributes;
+import io.temporal.api.enums.v1.IndexedValueType;
 import io.temporal.client.WorkflowClient;
 import io.temporal.client.WorkflowOptions;
 import io.temporal.client.WorkflowStub;
@@ -45,6 +47,7 @@ class PropertyPolicyWorkflowTest {
     @Test
     void startsPolicyInActiveState() {
         try (TestWorkflowEnvironment env = TestWorkflowEnvironment.newInstance()) {
+            env.registerSearchAttribute(PolicySearchAttributes.POLICY_HOLDER_ID, IndexedValueType.INDEXED_VALUE_TYPE_KEYWORD);
             Worker worker = env.newWorker(TaskQueues.POLICY_TASK_QUEUE);
             worker.registerWorkflowImplementationTypes(PropertyPolicyWorkflowImpl.class);
             env.start();
@@ -65,6 +68,7 @@ class PropertyPolicyWorkflowTest {
     @Test
     void fullLifecycleTransition() {
         try (TestWorkflowEnvironment env = TestWorkflowEnvironment.newInstance()) {
+            env.registerSearchAttribute(PolicySearchAttributes.POLICY_HOLDER_ID, IndexedValueType.INDEXED_VALUE_TYPE_KEYWORD);
             Worker worker = env.newWorker(TaskQueues.POLICY_TASK_QUEUE);
             worker.registerWorkflowImplementationTypes(PropertyPolicyWorkflowImpl.class);
             env.start();
@@ -95,6 +99,7 @@ class PropertyPolicyWorkflowTest {
     @Test
     void cancelPolicyCompletesWorkflow() {
         try (TestWorkflowEnvironment env = TestWorkflowEnvironment.newInstance()) {
+            env.registerSearchAttribute(PolicySearchAttributes.POLICY_HOLDER_ID, IndexedValueType.INDEXED_VALUE_TYPE_KEYWORD);
             Worker worker = env.newWorker(TaskQueues.POLICY_TASK_QUEUE);
             worker.registerWorkflowImplementationTypes(PropertyPolicyWorkflowImpl.class);
             env.start();
@@ -113,6 +118,7 @@ class PropertyPolicyWorkflowTest {
     @Test
     void addLossPayeeReturnsCount() {
         try (TestWorkflowEnvironment env = TestWorkflowEnvironment.newInstance()) {
+            env.registerSearchAttribute(PolicySearchAttributes.POLICY_HOLDER_ID, IndexedValueType.INDEXED_VALUE_TYPE_KEYWORD);
             Worker worker = env.newWorker(TaskQueues.POLICY_TASK_QUEUE);
             worker.registerWorkflowImplementationTypes(PropertyPolicyWorkflowImpl.class);
             env.start();
@@ -135,6 +141,7 @@ class PropertyPolicyWorkflowTest {
     @Test
     void addLossPayeeRejectsDuplicateId() {
         try (TestWorkflowEnvironment env = TestWorkflowEnvironment.newInstance()) {
+            env.registerSearchAttribute(PolicySearchAttributes.POLICY_HOLDER_ID, IndexedValueType.INDEXED_VALUE_TYPE_KEYWORD);
             Worker worker = env.newWorker(TaskQueues.POLICY_TASK_QUEUE);
             worker.registerWorkflowImplementationTypes(PropertyPolicyWorkflowImpl.class);
             env.start();
@@ -158,6 +165,7 @@ class PropertyPolicyWorkflowTest {
     @Test
     void removeLossPayeeSucceeds() {
         try (TestWorkflowEnvironment env = TestWorkflowEnvironment.newInstance()) {
+            env.registerSearchAttribute(PolicySearchAttributes.POLICY_HOLDER_ID, IndexedValueType.INDEXED_VALUE_TYPE_KEYWORD);
             Worker worker = env.newWorker(TaskQueues.POLICY_TASK_QUEUE);
             worker.registerWorkflowImplementationTypes(PropertyPolicyWorkflowImpl.class);
             env.start();
@@ -177,6 +185,7 @@ class PropertyPolicyWorkflowTest {
     @Test
     void removeLossPayeeRejectsMissingId() {
         try (TestWorkflowEnvironment env = TestWorkflowEnvironment.newInstance()) {
+            env.registerSearchAttribute(PolicySearchAttributes.POLICY_HOLDER_ID, IndexedValueType.INDEXED_VALUE_TYPE_KEYWORD);
             Worker worker = env.newWorker(TaskQueues.POLICY_TASK_QUEUE);
             worker.registerWorkflowImplementationTypes(PropertyPolicyWorkflowImpl.class);
             env.start();
@@ -197,6 +206,7 @@ class PropertyPolicyWorkflowTest {
     @Test
     void propertyFieldAccessible() {
         try (TestWorkflowEnvironment env = TestWorkflowEnvironment.newInstance()) {
+            env.registerSearchAttribute(PolicySearchAttributes.POLICY_HOLDER_ID, IndexedValueType.INDEXED_VALUE_TYPE_KEYWORD);
             Worker worker = env.newWorker(TaskQueues.POLICY_TASK_QUEUE);
             worker.registerWorkflowImplementationTypes(PropertyPolicyWorkflowImpl.class);
             env.start();
