@@ -8,9 +8,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.ziggy.insurance.domains.policy.auto.AutoPolicyState;
 import com.ziggy.insurance.domains.policy.auto.AutoPolicyWorkflowImpl;
+import com.ziggy.insurance.domains.policy.auto.AutoPolicyWorkflow;
 import com.ziggy.insurance.domains.policy.TaskQueues;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.temporal.client.WorkflowClient;
+import io.temporal.client.WorkflowStub;
 import io.temporal.testing.TestWorkflowEnvironment;
 import io.temporal.worker.Worker;
 import org.junit.jupiter.api.AfterAll;
@@ -62,6 +64,9 @@ class AutoPolicyControllerTest {
     private MockMvc mockMvc;
 
     @Autowired
+    private WorkflowClient workflowClient;
+
+    @Autowired
     private ObjectMapper objectMapper;
 
     @AfterAll
@@ -69,6 +74,13 @@ class AutoPolicyControllerTest {
         if (testEnv != null) {
             testEnv.close();
         }
+    }
+
+
+    private void waitForPolicyWorkflowToComplete() {
+        AutoPolicyWorkflow wf = workflowClient.newWorkflowStub(
+            AutoPolicyWorkflow.class, PolicyService.workflowId("auto", POLICY_ID));
+        WorkflowStub.fromTyped(wf).getResult(Void.class);
     }
 
     @Test
@@ -258,6 +270,8 @@ class AutoPolicyControllerTest {
                     { "reason": "policyholder request" }
                     """))
             .andExpect(status().isAccepted());
+
+        waitForPolicyWorkflowToComplete();
     }
 
     @Test

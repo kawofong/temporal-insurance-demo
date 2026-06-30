@@ -38,6 +38,11 @@ class CommercialPolicyWorkflowTest {
             .build();
     }
 
+    private void cancelAndWait(CommercialPolicyWorkflow wf) {
+        wf.cancelPolicy("done");
+        WorkflowStub.fromTyped(wf).getResult(Void.class);
+    }
+
     // --- Lifecycle tests ---
 
     @Test
@@ -56,7 +61,7 @@ class CommercialPolicyWorkflowTest {
             assertThat(state.getPolicyId()).isEqualTo("POL-COMM-001");
             assertThat(state.getPolicyHolderId()).isEqualTo("PH-001");
 
-            wf.cancelPolicy("done");
+            cancelAndWait(wf);
         }
     }
 
@@ -85,7 +90,7 @@ class CommercialPolicyWorkflowTest {
             wf.completeRenewal();
             assertThat(wf.getPolicy().getStatus()).isEqualTo(PolicyStatus.ACTIVE);
 
-            wf.cancelPolicy("done");
+            cancelAndWait(wf);
             WorkflowStub.fromTyped(wf).getResult(Void.class);
         }
     }
@@ -126,7 +131,7 @@ class CommercialPolicyWorkflowTest {
             assertThat(count2).isEqualTo(2);
             assertThat(wf.getPolicy().getAdditionalInsureds()).hasSize(2);
 
-            wf.cancelPolicy("done");
+            cancelAndWait(wf);
         }
     }
 
@@ -149,7 +154,7 @@ class CommercialPolicyWorkflowTest {
                 .rootCause().hasMessageContaining("already on this policy");
 
             assertThat(wf.getPolicy().getAdditionalInsureds()).hasSize(1);
-            wf.cancelPolicy("done");
+            cancelAndWait(wf);
         }
     }
 
@@ -168,7 +173,7 @@ class CommercialPolicyWorkflowTest {
             wf.removeAdditionalInsured("AI-001");
 
             assertThat(wf.getPolicy().getAdditionalInsureds()).isEmpty();
-            wf.cancelPolicy("done");
+            cancelAndWait(wf);
         }
     }
 
@@ -188,7 +193,7 @@ class CommercialPolicyWorkflowTest {
                 .hasRootCauseInstanceOf(io.temporal.failure.ApplicationFailure.class)
                 .rootCause().hasMessageContaining("No additional insured");
 
-            wf.cancelPolicy("done");
+            cancelAndWait(wf);
         }
     }
 
@@ -205,7 +210,7 @@ class CommercialPolicyWorkflowTest {
 
             assertThat(wf.getPolicy().getBusinessName()).isEqualTo("Jake's Pixel Repair Shop");
 
-            wf.cancelPolicy("done");
+            cancelAndWait(wf);
         }
     }
 }

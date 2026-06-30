@@ -6,8 +6,10 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 import com.ziggy.insurance.domains.policy.property.PropertyPolicyWorkflowImpl;
+import com.ziggy.insurance.domains.policy.property.PropertyPolicyWorkflow;
 import com.ziggy.insurance.domains.policy.TaskQueues;
 import io.temporal.client.WorkflowClient;
+import io.temporal.client.WorkflowStub;
 import io.temporal.testing.TestWorkflowEnvironment;
 import io.temporal.worker.Worker;
 import org.junit.jupiter.api.AfterAll;
@@ -57,11 +59,21 @@ class PropertyPolicyControllerTest {
     @Autowired
     private MockMvc mockMvc;
 
+    @Autowired
+    private WorkflowClient workflowClient;
+
     @AfterAll
     void tearDown() {
         if (testEnv != null) {
             testEnv.close();
         }
+    }
+
+
+    private void waitForPolicyWorkflowToComplete() {
+        PropertyPolicyWorkflow wf = workflowClient.newWorkflowStub(
+            PropertyPolicyWorkflow.class, PolicyService.workflowId("property", POLICY_ID));
+        WorkflowStub.fromTyped(wf).getResult(Void.class);
     }
 
     @Test
@@ -207,5 +219,7 @@ class PropertyPolicyControllerTest {
                     { "reason": "sold property" }
                     """))
             .andExpect(status().isAccepted());
+
+        waitForPolicyWorkflowToComplete();
     }
 }

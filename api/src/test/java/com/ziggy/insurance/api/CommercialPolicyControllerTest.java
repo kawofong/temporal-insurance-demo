@@ -6,8 +6,10 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 import com.ziggy.insurance.domains.policy.commercial.CommercialPolicyWorkflowImpl;
+import com.ziggy.insurance.domains.policy.commercial.CommercialPolicyWorkflow;
 import com.ziggy.insurance.domains.policy.TaskQueues;
 import io.temporal.client.WorkflowClient;
+import io.temporal.client.WorkflowStub;
 import io.temporal.testing.TestWorkflowEnvironment;
 import io.temporal.worker.Worker;
 import org.junit.jupiter.api.AfterAll;
@@ -57,11 +59,21 @@ class CommercialPolicyControllerTest {
     @Autowired
     private MockMvc mockMvc;
 
+    @Autowired
+    private WorkflowClient workflowClient;
+
     @AfterAll
     void tearDown() {
         if (testEnv != null) {
             testEnv.close();
         }
+    }
+
+
+    private void waitForPolicyWorkflowToComplete() {
+        CommercialPolicyWorkflow wf = workflowClient.newWorkflowStub(
+            CommercialPolicyWorkflow.class, PolicyService.workflowId("commercial", POLICY_ID));
+        WorkflowStub.fromTyped(wf).getResult(Void.class);
     }
 
     @Test
@@ -195,5 +207,7 @@ class CommercialPolicyControllerTest {
                     { "reason": "business closed" }
                     """))
             .andExpect(status().isAccepted());
+
+        waitForPolicyWorkflowToComplete();
     }
 }

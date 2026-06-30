@@ -40,6 +40,11 @@ class PropertyPolicyWorkflowTest {
             .build();
     }
 
+    private void cancelAndWait(PropertyPolicyWorkflow wf) {
+        wf.cancelPolicy("done");
+        WorkflowStub.fromTyped(wf).getResult(Void.class);
+    }
+
     // --- Lifecycle tests ---
 
     @Test
@@ -58,7 +63,7 @@ class PropertyPolicyWorkflowTest {
             assertThat(state.getPolicyId()).isEqualTo("POL-PROP-001");
             assertThat(state.getPolicyHolderId()).isEqualTo("PH-001");
 
-            wf.cancelPolicy("done");
+            cancelAndWait(wf);
         }
     }
 
@@ -87,7 +92,7 @@ class PropertyPolicyWorkflowTest {
             wf.completeRenewal();
             assertThat(wf.getPolicy().getStatus()).isEqualTo(PolicyStatus.ACTIVE);
 
-            wf.cancelPolicy("done");
+            cancelAndWait(wf);
             WorkflowStub.fromTyped(wf).getResult(Void.class);
         }
     }
@@ -128,7 +133,7 @@ class PropertyPolicyWorkflowTest {
             assertThat(count2).isEqualTo(2);
             assertThat(wf.getPolicy().getLossPayees()).hasSize(2);
 
-            wf.cancelPolicy("done");
+            cancelAndWait(wf);
         }
     }
 
@@ -151,7 +156,7 @@ class PropertyPolicyWorkflowTest {
                 .rootCause().hasMessageContaining("already on this policy");
 
             assertThat(wf.getPolicy().getLossPayees()).hasSize(1);
-            wf.cancelPolicy("done");
+            cancelAndWait(wf);
         }
     }
 
@@ -170,7 +175,7 @@ class PropertyPolicyWorkflowTest {
             wf.removeLossPayee("LP-001");
 
             assertThat(wf.getPolicy().getLossPayees()).isEmpty();
-            wf.cancelPolicy("done");
+            cancelAndWait(wf);
         }
     }
 
@@ -190,7 +195,7 @@ class PropertyPolicyWorkflowTest {
                 .hasRootCauseInstanceOf(io.temporal.failure.ApplicationFailure.class)
                 .rootCause().hasMessageContaining("No loss payee");
 
-            wf.cancelPolicy("done");
+            cancelAndWait(wf);
         }
     }
 
@@ -209,7 +214,7 @@ class PropertyPolicyWorkflowTest {
             assertThat(prop.address()).isEqualTo("742 Evergreen Terrace");
             assertThat(prop.propertyType()).isEqualTo("SINGLE_FAMILY");
 
-            wf.cancelPolicy("done");
+            cancelAndWait(wf);
         }
     }
 }

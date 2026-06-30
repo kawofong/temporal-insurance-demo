@@ -36,6 +36,11 @@ class AutoPolicyWorkflowTest {
             .build();
     }
 
+    private void cancelAndWait(AutoPolicyWorkflow wf) {
+        wf.cancelPolicy("done");
+        WorkflowStub.fromTyped(wf).getResult(Void.class);
+    }
+
     // --- Lifecycle tests ---
 
     @Test
@@ -54,7 +59,7 @@ class AutoPolicyWorkflowTest {
             assertThat(state.getPolicyId()).isEqualTo("POL-AUTO-001");
             assertThat(state.getPolicyHolderId()).isEqualTo("PH-001");
 
-            wf.cancelPolicy("done");
+            cancelAndWait(wf);
         }
     }
 
@@ -72,7 +77,7 @@ class AutoPolicyWorkflowTest {
             wf.suspendPolicy("non-payment");
 
             assertThat(wf.getPolicy().getStatus()).isEqualTo(PolicyStatus.SUSPENDED);
-            wf.cancelPolicy("done");
+            cancelAndWait(wf);
         }
     }
 
@@ -91,7 +96,7 @@ class AutoPolicyWorkflowTest {
             wf.reactivatePolicy();
 
             assertThat(wf.getPolicy().getStatus()).isEqualTo(PolicyStatus.ACTIVE);
-            wf.cancelPolicy("done");
+            cancelAndWait(wf);
         }
     }
 
@@ -109,7 +114,7 @@ class AutoPolicyWorkflowTest {
             wf.reactivatePolicy();
 
             assertThat(wf.getPolicy().getStatus()).isEqualTo(PolicyStatus.ACTIVE);
-            wf.cancelPolicy("done");
+            cancelAndWait(wf);
         }
     }
 
@@ -127,7 +132,7 @@ class AutoPolicyWorkflowTest {
             wf.initiateRenewal();
 
             assertThat(wf.getPolicy().getStatus()).isEqualTo(PolicyStatus.RENEWAL_PENDING);
-            wf.cancelPolicy("done");
+            cancelAndWait(wf);
         }
     }
 
@@ -146,7 +151,7 @@ class AutoPolicyWorkflowTest {
             wf.initiateRenewal();
 
             assertThat(wf.getPolicy().getStatus()).isEqualTo(PolicyStatus.SUSPENDED);
-            wf.cancelPolicy("done");
+            cancelAndWait(wf);
         }
     }
 
@@ -165,7 +170,7 @@ class AutoPolicyWorkflowTest {
             wf.completeRenewal();
 
             assertThat(wf.getPolicy().getStatus()).isEqualTo(PolicyStatus.ACTIVE);
-            wf.cancelPolicy("done");
+            cancelAndWait(wf);
         }
     }
 
@@ -183,7 +188,7 @@ class AutoPolicyWorkflowTest {
             wf.completeRenewal();
 
             assertThat(wf.getPolicy().getStatus()).isEqualTo(PolicyStatus.ACTIVE);
-            wf.cancelPolicy("done");
+            cancelAndWait(wf);
         }
     }
 
@@ -221,8 +226,7 @@ class AutoPolicyWorkflowTest {
             assertThat(wf.getPolicy().getStatus()).isEqualTo(PolicyStatus.SUSPENDED);
 
             // Verify suspend works, but once cancelled, status becomes CANCELLED
-            wf.cancelPolicy("done");
-            WorkflowStub.fromTyped(wf).getResult(Void.class);
+            cancelAndWait(wf);
         }
     }
 
@@ -246,7 +250,7 @@ class AutoPolicyWorkflowTest {
             assertThat(count2).isEqualTo(2);
             assertThat(wf.getPolicy().getInsuredVehicles()).hasSize(2);
 
-            wf.cancelPolicy("done");
+            cancelAndWait(wf);
         }
     }
 
@@ -269,7 +273,7 @@ class AutoPolicyWorkflowTest {
                 .rootCause().hasMessageContaining("already insured");
 
             assertThat(wf.getPolicy().getInsuredVehicles()).hasSize(1);
-            wf.cancelPolicy("done");
+            cancelAndWait(wf);
         }
     }
 
@@ -288,7 +292,7 @@ class AutoPolicyWorkflowTest {
             wf.removeVehicle("V-001");
 
             assertThat(wf.getPolicy().getInsuredVehicles()).isEmpty();
-            wf.cancelPolicy("done");
+            cancelAndWait(wf);
         }
     }
 
@@ -308,7 +312,7 @@ class AutoPolicyWorkflowTest {
                 .hasRootCauseInstanceOf(io.temporal.failure.ApplicationFailure.class)
                 .rootCause().hasMessageContaining("No vehicle");
 
-            wf.cancelPolicy("done");
+            cancelAndWait(wf);
         }
     }
 
@@ -329,7 +333,7 @@ class AutoPolicyWorkflowTest {
             wf.addDriver(SARAH);
 
             assertThat(wf.getPolicy().getListedDrivers()).hasSize(2);
-            wf.cancelPolicy("done");
+            cancelAndWait(wf);
         }
     }
 
@@ -348,7 +352,7 @@ class AutoPolicyWorkflowTest {
             wf.removeDriver("D-001");
 
             assertThat(wf.getPolicy().getListedDrivers()).isEmpty();
-            wf.cancelPolicy("done");
+            cancelAndWait(wf);
         }
     }
 }
