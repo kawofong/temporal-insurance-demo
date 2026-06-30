@@ -1,4 +1,5 @@
 [tools]
+node = "22"
 "npm:@marp-team/marp-cli" = "4.4.0"
 
 [tasks."slides"]
@@ -8,3 +9,18 @@ run = "marp docs/presentations/presentation.md --html --output docs/presentation
 [tasks."slides:watch"]
 description = "Serve presentation slides with live reload"
 run = "marp --server docs/presentations/"
+
+[tasks."portal:install"]
+description = "Install portal dependencies"
+dir = "app"
+run = "npm install"
+
+[tasks."portal:dev"]
+description = "Run portal dev server"
+dir = "app"
+run = "npm run dev"
+
+[tasks."portal:build"]
+description = "Build portal for production"
+dir = "app"
+run = "npm run build"

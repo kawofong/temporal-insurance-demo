@@ -1,0 +1,57 @@
+/* Global retro 16-bit styles for Ziggy Insurance portal */
+/* Dark space theme with pixel-art aesthetic */
+
+:root {
+  --bg-deep: #0b0b1a;
+  --bg-panel: #12122a;
+  --bg-card: #1a1a3e;
+  --purple-primary: #7c3aed;
+  --purple-light: #a855f7;
+  --purple-glow: #c084fc;
+  --purple-dim: #3b1f6e;
+  --accent-gold: #f5c542;
+  --accent-pink: #e879a8;
+  --text-primary: #e8e6f0;
+  --text-muted: #9890b0;
+  --border-pixel: #5b21b6;
+  --success: #4ade80;
+  --warning: #fbbf24;
+  --danger: #f87171;
+  --info: #60a5fa;
+
+  font-family: 'Press Start 2P', monospace;
+  font-size: 12px;
+  line-height: 2.0;
+  color: var(--text-primary);
+  background-color: var(--bg-deep);
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  min-height: 100vh;
+  background-color: var(--bg-deep);
+  background-image:
+    linear-gradient(rgba(124, 58, 237, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(124, 58, 237, 0.06) 1px, transparent 1px);
+  background-size: 32px 32px;
+}
+
+#root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+a {
+  color: var(--purple-light);
+  text-decoration: none;
+}
+
+a:hover {
+  color: var(--purple-glow);
+}

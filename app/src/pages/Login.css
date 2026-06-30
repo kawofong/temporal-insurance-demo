@@ -1,0 +1,90 @@
+/* Login page styles */
+/* Retro 16-bit themed login screen for Ziggy Insurance */
+
+.login-page {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 24px;
+  text-align: center;
+}
+
+.login-container {
+  border: 4px solid var(--border-pixel);
+  background: var(--bg-panel);
+  padding: 56px 48px;
+  max-width: 540px;
+  width: 100%;
+  box-shadow:
+    8px 8px 0 var(--purple-dim),
+    0 0 60px rgba(124, 58, 237, 0.15);
+  image-rendering: pixelated;
+}
+
+.login-pixel-art {
+  font-size: 48px;
+  margin-bottom: 24px;
+  display: block;
+  filter: contrast(1.2);
+}
+
+.login-title {
+  font-size: 24px;
+  color: var(--purple-glow);
+  margin-bottom: 12px;
+  text-shadow: 2px 2px 0 var(--purple-dim);
+  letter-spacing: 2px;
+}
+
+.login-subtitle {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-bottom: 36px;
+}
+
+.login-divider {
+  border: none;
+  border-top: 2px dashed var(--border-pixel);
+  margin: 24px 0;
+}
+
+.login-button {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 15px;
+  color: var(--text-primary);
+  background: var(--purple-primary);
+  border: 3px solid var(--purple-light);
+  padding: 20px 36px;
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  transition: all 0.1s;
+  box-shadow: 4px 4px 0 var(--purple-dim);
+  width: 100%;
+}
+
+.login-button:hover {
+  background: var(--purple-light);
+  box-shadow: 2px 2px 0 var(--purple-dim);
+  transform: translate(2px, 2px);
+}
+
+.login-button:active {
+  box-shadow: 0 0 0 var(--purple-dim);
+  transform: translate(4px, 4px);
+}
+
+.login-footer {
+  margin-top: 36px;
+  font-size: 9px;
+  color: var(--text-muted);
+}
+
+.login-stars {
+  font-size: 8px;
+  color: var(--accent-gold);
+  letter-spacing: 6px;
+  margin-bottom: 20px;
+}

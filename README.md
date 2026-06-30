@@ -10,6 +10,7 @@ An Unified Insurance Platform, powered by Temporal.
 
 ```bash
 mise install
+mise run portal:install
 ```
 
 ## Usage

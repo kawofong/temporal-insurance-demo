@@ -1,0 +1,227 @@
+/* Policyholder portal page styles */
+/* Retro 16-bit themed dashboard with policy cards and claims table */
+
+.portal-page {
+  min-height: 100vh;
+  padding: 32px;
+  max-width: 1100px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+/* Header bar */
+.portal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border: 3px solid var(--border-pixel);
+  background: var(--bg-panel);
+  padding: 24px 32px;
+  margin-bottom: 36px;
+  box-shadow: 4px 4px 0 var(--purple-dim);
+}
+
+.portal-header-left h1 {
+  font-size: 17px;
+  color: var(--purple-glow);
+  text-shadow: 2px 2px 0 var(--purple-dim);
+}
+
+.portal-header-left p {
+  font-size: 9px;
+  color: var(--text-muted);
+  margin-top: 8px;
+}
+
+.portal-logout {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 10px;
+  color: var(--text-muted);
+  background: transparent;
+  border: 2px solid var(--border-pixel);
+  padding: 12px 20px;
+  cursor: pointer;
+  transition: all 0.1s;
+}
+
+.portal-logout:hover {
+  color: var(--text-primary);
+  border-color: var(--purple-light);
+}
+
+/* Section headers */
+.section-title {
+  font-size: 14px;
+  color: var(--accent-gold);
+  margin-bottom: 20px;
+  text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.section-title::before {
+  content: "▸";
+  color: var(--purple-light);
+}
+
+/* Policy cards grid */
+.policies-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+  margin-bottom: 40px;
+}
+
+.policy-card {
+  border: 3px solid var(--border-pixel);
+  background: var(--bg-card);
+  padding: 24px;
+  box-shadow: 4px 4px 0 var(--purple-dim);
+  transition: all 0.1s;
+}
+
+.policy-card:hover {
+  border-color: var(--purple-light);
+  box-shadow: 6px 6px 0 var(--purple-dim);
+  transform: translate(-2px, -2px);
+}
+
+.policy-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 2px dashed var(--border-pixel);
+}
+
+.policy-card-type {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.policy-card-icon {
+  font-size: 24px;
+}
+
+.policy-card-label {
+  font-size: 13px;
+  color: var(--purple-glow);
+}
+
+.policy-card-id {
+  font-size: 9px;
+  color: var(--text-muted);
+}
+
+.policy-card-status {
+  font-size: 9px;
+  padding: 6px 12px;
+  border: 2px solid var(--success);
+  color: var(--success);
+}
+
+.policy-card-details {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.policy-detail {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+}
+
+.policy-detail-label {
+  color: var(--text-muted);
+}
+
+.policy-detail-value {
+  color: var(--text-primary);
+  text-align: right;
+}
+
+/* Claims section */
+.claims-section {
+  margin-bottom: 40px;
+}
+
+.claims-table-wrapper {
+  border: 3px solid var(--border-pixel);
+  background: var(--bg-panel);
+  box-shadow: 4px 4px 0 var(--purple-dim);
+  overflow-x: auto;
+}
+
+.claims-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 10px;
+}
+
+.claims-table thead {
+  background: var(--bg-card);
+}
+
+.claims-table th {
+  padding: 16px 20px;
+  text-align: left;
+  color: var(--purple-glow);
+  border-bottom: 2px solid var(--border-pixel);
+  font-weight: normal;
+  white-space: nowrap;
+}
+
+.claims-table td {
+  padding: 16px 20px;
+  border-bottom: 1px solid rgba(91, 33, 182, 0.3);
+  white-space: nowrap;
+}
+
+.claims-table tr:last-child td {
+  border-bottom: none;
+}
+
+.claims-table tr:hover td {
+  background: rgba(124, 58, 237, 0.08);
+}
+
+.claim-status {
+  display: inline-block;
+  padding: 4px 10px;
+  border: 2px solid;
+  font-size: 9px;
+  font-family: 'Press Start 2P', monospace;
+}
+
+.claim-status--approved {
+  border-color: var(--success);
+  color: var(--success);
+}
+
+.claim-status--paid {
+  border-color: var(--info);
+  color: var(--info);
+}
+
+.claim-status--in-review {
+  border-color: var(--warning);
+  color: var(--warning);
+}
+
+.claim-status--denied {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+/* Footer */
+.portal-footer {
+  text-align: center;
+  font-size: 9px;
+  color: var(--text-muted);
+  padding: 32px;
+  border-top: 2px dashed var(--border-pixel);
+}
