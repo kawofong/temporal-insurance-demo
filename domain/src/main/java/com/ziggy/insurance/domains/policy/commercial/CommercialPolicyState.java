@@ -10,6 +10,7 @@ import java.util.List;
 public class CommercialPolicyState {
 
     private String policyId;
+    private String policyHolderId;
     private PolicyStatus status;
     private long effectiveDate;
     private long expiryDate;
@@ -21,6 +22,7 @@ public class CommercialPolicyState {
     public static CommercialPolicyState fromInput(CommercialPolicyInput input) {
         CommercialPolicyState state = new CommercialPolicyState();
         state.policyId = input.policyId();
+        state.policyHolderId = input.policyHolderId();
         state.status = PolicyStatus.ACTIVE;
         state.effectiveDate = input.effectiveDate();
         state.expiryDate = input.expiryDate();
@@ -33,6 +35,9 @@ public class CommercialPolicyState {
 
     public String getPolicyId() { return policyId; }
     public void setPolicyId(String policyId) { this.policyId = policyId; }
+
+    public String getPolicyHolderId() { return policyHolderId; }
+    public void setPolicyHolderId(String policyHolderId) { this.policyHolderId = policyHolderId; }
 
     public PolicyStatus getStatus() { return status; }
     public void setStatus(PolicyStatus status) { this.status = status; }

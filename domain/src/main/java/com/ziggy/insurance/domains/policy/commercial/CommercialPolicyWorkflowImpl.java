@@ -4,6 +4,7 @@ package com.ziggy.insurance.domains.policy.commercial;
 
 import com.ziggy.insurance.domains.policy.models.AdditionalInsured;
 import com.ziggy.insurance.domains.policy.models.PolicyStatus;
+import com.ziggy.insurance.domains.policy.search.PolicySearchAttributes;
 import io.temporal.spring.boot.WorkflowImpl;
 import io.temporal.workflow.Workflow;
 
@@ -16,6 +17,7 @@ public class CommercialPolicyWorkflowImpl implements CommercialPolicyWorkflow {
     @Override
     public void run(CommercialPolicyInput input) {
         this.state = CommercialPolicyState.fromInput(input);
+        PolicySearchAttributes.upsertPolicyHolderId(input.policyHolderId());
         Workflow.await(() -> cancelled);
         state.setStatus(PolicyStatus.CANCELLED);
     }

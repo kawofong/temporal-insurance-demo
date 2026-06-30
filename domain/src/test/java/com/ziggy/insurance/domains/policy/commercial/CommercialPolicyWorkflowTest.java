@@ -27,7 +27,7 @@ class CommercialPolicyWorkflowTest {
 
     private CommercialPolicyInput testInput() {
         return new CommercialPolicyInput(
-            "POL-COMM-001", 1700000000L, 1731536000L,
+            "POL-COMM-001", "PH-001", 1700000000L, 1731536000L,
             "Jake's Pixel Repair Shop", List.of());
     }
 
@@ -54,6 +54,7 @@ class CommercialPolicyWorkflowTest {
             CommercialPolicyState state = wf.getPolicy();
             assertThat(state.getStatus()).isEqualTo(PolicyStatus.ACTIVE);
             assertThat(state.getPolicyId()).isEqualTo("POL-COMM-001");
+            assertThat(state.getPolicyHolderId()).isEqualTo("PH-001");
 
             wf.cancelPolicy("done");
         }

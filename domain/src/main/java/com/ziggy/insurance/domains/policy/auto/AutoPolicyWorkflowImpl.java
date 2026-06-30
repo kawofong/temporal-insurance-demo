@@ -5,6 +5,7 @@ package com.ziggy.insurance.domains.policy.auto;
 import com.ziggy.insurance.domains.policy.models.Driver;
 import com.ziggy.insurance.domains.policy.models.PolicyStatus;
 import com.ziggy.insurance.domains.policy.models.Vehicle;
+import com.ziggy.insurance.domains.policy.search.PolicySearchAttributes;
 import io.temporal.spring.boot.WorkflowImpl;
 import io.temporal.workflow.Workflow;
 
@@ -17,6 +18,7 @@ public class AutoPolicyWorkflowImpl implements AutoPolicyWorkflow {
     @Override
     public void run(AutoPolicyInput input) {
         this.state = AutoPolicyState.fromInput(input);
+        PolicySearchAttributes.upsertPolicyHolderId(input.policyHolderId());
         Workflow.await(() -> cancelled);
         state.setStatus(PolicyStatus.CANCELLED);
     }

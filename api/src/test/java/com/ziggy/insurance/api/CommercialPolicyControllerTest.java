@@ -70,6 +70,7 @@ class CommercialPolicyControllerTest {
         String body = """
             {
                 "policyId": "%s",
+                "policyHolderId": "PH-001",
                 "effectiveDate": 1700000000,
                 "expiryDate": 1731536000,
                 "businessName": "Jake's Pixel Repair Shop",
