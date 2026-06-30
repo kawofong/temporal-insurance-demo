@@ -13,3 +13,7 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = 'temporal-insurance-demo'
+
+include 'domain'
+include 'api'
+include 'workers'

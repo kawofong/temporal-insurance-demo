@@ -1,0 +1,12 @@
+// REST API application module: serves HTTP endpoints and acts as a Temporal client only.
+// Starts no workers; delegates workflow execution to the workers module.
+
+dependencies {
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'io.temporal:temporal-spring-boot-starter:1.36.0'
+    implementation project(':domain')
+
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'io.temporal:temporal-testing:1.36.0'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
