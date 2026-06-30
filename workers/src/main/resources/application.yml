@@ -1,0 +1,14 @@
+spring:
+  main:
+    web-application-type: none
+  application:
+    name: insurance-workers
+  temporal:
+    connection:
+      target: ${TEMPORAL_TARGET:localhost:7233}
+    namespace: ${TEMPORAL_NAMESPACE:default}
+    workers-auto-discovery:
+      packages:
+        - com.ziggy.insurance.domains
+    workers:
+      - task-queue: policy-task-queue

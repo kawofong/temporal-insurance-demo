@@ -1,0 +1,21 @@
+// Shared library module: Temporal workflow definitions, policy models, and task-queue constants.
+// Consumed by both the api and workers application modules.
+
+dependencies {
+    implementation 'io.temporal:temporal-sdk:1.36.0'
+    // Workflow impls are annotated with io.temporal.spring.boot.@WorkflowImpl so the
+    // workers module can auto-discover and register them on the policy task queue.
+    implementation 'io.temporal:temporal-spring-boot-starter:1.36.0'
+
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'io.temporal:temporal-testing:1.36.0'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+bootJar {
+    enabled = false
+}
+
+jar {
+    enabled = true
+}

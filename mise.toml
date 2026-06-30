@@ -14,11 +14,11 @@ run = "gradle test"
 
 [tasks."temporal:worker"]
 description = "Run the Spring Boot Temporal worker against the local dev server"
-run = "gradle bootRun"
+run = "gradle :workers:bootRun"
 
 [tasks."temporal:api"]
 description = "Run the Spring Boot HTTP API server against the local dev server"
-run = "gradle bootRun"
+run = "gradle :api:bootRun"
 
 [tasks."slides"]
 description = "Build presentation slides to docs/presentations"

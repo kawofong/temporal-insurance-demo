@@ -1,0 +1,10 @@
+// Worker application module: headless process that registers and runs Temporal workers.
+// Hosts the workflow implementations from the domain module on the policy task queue.
+
+dependencies {
+    implementation 'io.temporal:temporal-spring-boot-starter:1.36.0'
+    implementation project(':domain')
+
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}

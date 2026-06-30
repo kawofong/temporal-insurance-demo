@@ -1,0 +1,13 @@
+server:
+  port: 8080
+spring:
+  application:
+    name: insurance-api
+  temporal:
+    connection:
+      target: ${TEMPORAL_TARGET:localhost:7233}
+    namespace: ${TEMPORAL_NAMESPACE:default}
+    # Intentionally no workers configured: the API is a Temporal client only.
+    # Leaving auto-discovery blank yields a WorkflowClient without starting a worker.
+    workers-auto-discovery:
+      packages:
