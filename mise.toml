@@ -2,6 +2,7 @@
 java = "21.0.2"
 gradle = "8.14.4"
 node = "22"
+temporal = "1.30.5"
 "npm:@marp-team/marp-cli" = "4.4.0"
 
 [tasks."temporal:dev"]
