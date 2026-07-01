@@ -17,6 +17,7 @@ import com.ziggy.insurance.domains.policy.models.Vehicle;
 import com.ziggy.insurance.domains.policy.property.PropertyPolicyInput;
 import com.ziggy.insurance.domains.policy.property.PropertyPolicyState;
 import com.ziggy.insurance.domains.policy.property.PropertyPolicyWorkflow;
+import com.ziggy.insurance.domains.policy.search.PolicySearchAttributes;
 import com.ziggy.insurance.domains.policy.TaskQueues;
 import io.temporal.api.workflow.v1.WorkflowExecutionInfo;
 import io.temporal.api.workflowservice.v1.ListWorkflowExecutionsRequest;
@@ -260,19 +261,30 @@ public class PolicyService {
         return wf.run();
     }
 
-    // --- List all policies ---
+    // --- List policies ---
 
     public PolicyListResponse listAllPolicies() {
+        return listPolicies(null);
+    }
+
+    // Lists policies belonging to a single policyholder, filtered server-side
+    // via the policyHolderId search attribute.
+    public PolicyListResponse listPoliciesByPolicyHolder(String policyHolderId) {
+        return listPolicies(policyHolderId);
+    }
+
+    // Aggregates policy workflows of every execution status from Temporal visibility, optionally
+    // scoped to a single policyholder. Workflow ids are classified by type prefix, then each
+    // policy's current state is fetched via query.
+    private PolicyListResponse listPolicies(String policyHolderId) {
         List<AutoPolicyState> autoPolicies = new ArrayList<>();
         List<PropertyPolicyState> propertyPolicies = new ArrayList<>();
         List<CommercialPolicyState> commercialPolicies = new ArrayList<>();
 
         String namespace = workflowClient.getOptions().getNamespace();
-        String query = "TaskQueue = '" + TaskQueues.POLICY_TASK_QUEUE
-            + "' AND ExecutionStatus = 'Running'";
         ListWorkflowExecutionsRequest request = ListWorkflowExecutionsRequest.newBuilder()
             .setNamespace(namespace)
-            .setQuery(query)
+            .setQuery(buildPolicyListQuery(policyHolderId))
             .build();
 
         ListWorkflowExecutionsResponse response = workflowClient.getWorkflowServiceStubs()
@@ -297,5 +309,20 @@ public class PolicyService {
         }
 
         return new PolicyListResponse(autoPolicies, propertyPolicies, commercialPolicies);
+    }
+
+    // Builds the Temporal visibility query for policy workflows of every execution status,
+    // scoped by workflow type to the three policy entity workflows. When a policyholder is
+    // supplied, results are further scoped to that holder via the policyHolderId search attribute.
+    static String buildPolicyListQuery(String policyHolderId) {
+        String query = "WorkflowType IN ('"
+            + AutoPolicyWorkflow.class.getSimpleName() + "', '"
+            + PropertyPolicyWorkflow.class.getSimpleName() + "', '"
+            + CommercialPolicyWorkflow.class.getSimpleName() + "')";
+        if (hasText(policyHolderId)) {
+            query += " AND " + PolicySearchAttributes.POLICY_HOLDER_ID
+                + " = '" + policyHolderId + "'";
+        }
+        return query;
     }
 }

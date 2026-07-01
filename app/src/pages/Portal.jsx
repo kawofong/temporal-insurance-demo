@@ -440,7 +440,9 @@ function Portal() {
 
     async function loadPolicies() {
       try {
-        const response = await fetch(POLICY_ENDPOINT, { signal: controller.signal });
+        // Scope the dashboard to the signed-in policyholder via their user id.
+        const url = `${POLICY_ENDPOINT}?policyHolderId=${encodeURIComponent(policyholder.memberId)}`;
+        const response = await fetch(url, { signal: controller.signal });
         if (!response.ok) throw new Error(`Policy API returned ${response.status}`);
         const data = await response.json();
         setPolicies(normalizePolicies(data));
