@@ -45,6 +45,7 @@ class CommercialPolicyControllerTest {
         public TestWorkflowEnvironment testWorkflowEnvironment() {
             testEnv = TestWorkflowEnvironment.newInstance();
             testEnv.registerSearchAttribute(PolicySearchAttributes.POLICY_HOLDER_ID, IndexedValueType.INDEXED_VALUE_TYPE_KEYWORD);
+            testEnv.registerSearchAttribute(PolicySearchAttributes.POLICY_STATUS, IndexedValueType.INDEXED_VALUE_TYPE_KEYWORD);
             Worker worker = testEnv.newWorker(TaskQueues.POLICY_TASK_QUEUE);
             worker.registerWorkflowImplementationTypes(CommercialPolicyWorkflowImpl.class);
             testEnv.start();

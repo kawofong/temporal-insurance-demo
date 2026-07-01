@@ -13,54 +13,15 @@ import io.temporal.workflow.Workflow;
 public class AutoPolicyWorkflowImpl implements AutoPolicyWorkflow {
 
     private AutoPolicyState state;
-    private boolean cancelled = false;
+    private boolean cancelled;
 
     @Override
     public void run(AutoPolicyInput input) {
         this.state = AutoPolicyState.fromInput(input);
         PolicySearchAttributes.upsertPolicyHolderId(input.policyHolderId());
+        PolicySearchAttributes.upsertPolicyStatus(state.getStatus());
         Workflow.await(() -> cancelled);
-        state.setStatus(PolicyStatus.CANCELLED);
-    }
-
-    // --- Lifecycle signals ---
-
-    @Override
-    public void activatePolicy() {
-        state.setStatus(PolicyStatus.ACTIVE);
-    }
-
-    @Override
-    public void suspendPolicy(String reason) {
-        if (state.getStatus() != PolicyStatus.CANCELLED) {
-            state.setStatus(PolicyStatus.SUSPENDED);
-        }
-    }
-
-    @Override
-    public void reactivatePolicy() {
-        if (state.getStatus() == PolicyStatus.SUSPENDED) {
-            state.setStatus(PolicyStatus.ACTIVE);
-        }
-    }
-
-    @Override
-    public void initiateRenewal() {
-        if (state.getStatus() == PolicyStatus.ACTIVE) {
-            state.setStatus(PolicyStatus.RENEWAL_PENDING);
-        }
-    }
-
-    @Override
-    public void completeRenewal() {
-        if (state.getStatus() == PolicyStatus.RENEWAL_PENDING) {
-            state.setStatus(PolicyStatus.ACTIVE);
-        }
-    }
-
-    @Override
-    public void cancelPolicy(String reason) {
-        cancelled = true;
+        updateStatus(PolicyStatus.CANCELLED);
     }
 
     // --- Vehicle updates (with validators) ---
@@ -108,10 +69,56 @@ public class AutoPolicyWorkflowImpl implements AutoPolicyWorkflow {
         state.getListedDrivers().removeIf(d -> d.driverId().equals(driverId));
     }
 
+    // --- Lifecycle signals ---
+
+    @Override
+    public void activatePolicy() {
+        updateStatus(PolicyStatus.ACTIVE);
+    }
+
+    @Override
+    public void suspendPolicy(String reason) {
+        if (state.getStatus() != PolicyStatus.CANCELLED) {
+            updateStatus(PolicyStatus.SUSPENDED);
+        }
+    }
+
+    @Override
+    public void reactivatePolicy() {
+        if (state.getStatus() == PolicyStatus.SUSPENDED) {
+            updateStatus(PolicyStatus.ACTIVE);
+        }
+    }
+
+    @Override
+    public void cancelPolicy(String reason) {
+        cancelled = true;
+    }
+
+    @Override
+    public void initiateRenewal() {
+        if (state.getStatus() == PolicyStatus.ACTIVE) {
+            updateStatus(PolicyStatus.RENEWAL_PENDING);
+        }
+    }
+
+    @Override
+    public void completeRenewal() {
+        if (state.getStatus() == PolicyStatus.RENEWAL_PENDING) {
+            updateStatus(PolicyStatus.ACTIVE);
+        }
+    }
+
     // --- Query ---
 
     @Override
     public AutoPolicyState getPolicy() {
         return state;
+    }
+
+    // Applies a lifecycle transition and mirrors the new status to the policyStatus search attribute.
+    private void updateStatus(PolicyStatus status) {
+        state.setStatus(status);
+        PolicySearchAttributes.upsertPolicyStatus(status);
     }
 }

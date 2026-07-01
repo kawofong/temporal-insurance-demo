@@ -18,48 +18,55 @@ public class CommercialPolicyWorkflowImpl implements CommercialPolicyWorkflow {
     public void run(CommercialPolicyInput input) {
         this.state = CommercialPolicyState.fromInput(input);
         PolicySearchAttributes.upsertPolicyHolderId(input.policyHolderId());
+        PolicySearchAttributes.upsertPolicyStatus(state.getStatus());
         Workflow.await(() -> cancelled);
-        state.setStatus(PolicyStatus.CANCELLED);
+        updateStatus(PolicyStatus.CANCELLED);
     }
 
     // --- Lifecycle signals ---
 
     @Override
     public void activatePolicy() {
-        state.setStatus(PolicyStatus.ACTIVE);
+        updateStatus(PolicyStatus.ACTIVE);
     }
 
     @Override
     public void suspendPolicy(String reason) {
         if (state.getStatus() != PolicyStatus.CANCELLED) {
-            state.setStatus(PolicyStatus.SUSPENDED);
+            updateStatus(PolicyStatus.SUSPENDED);
         }
     }
 
     @Override
     public void reactivatePolicy() {
         if (state.getStatus() == PolicyStatus.SUSPENDED) {
-            state.setStatus(PolicyStatus.ACTIVE);
+            updateStatus(PolicyStatus.ACTIVE);
         }
     }
 
     @Override
     public void initiateRenewal() {
         if (state.getStatus() == PolicyStatus.ACTIVE) {
-            state.setStatus(PolicyStatus.RENEWAL_PENDING);
+            updateStatus(PolicyStatus.RENEWAL_PENDING);
         }
     }
 
     @Override
     public void completeRenewal() {
         if (state.getStatus() == PolicyStatus.RENEWAL_PENDING) {
-            state.setStatus(PolicyStatus.ACTIVE);
+            updateStatus(PolicyStatus.ACTIVE);
         }
     }
 
     @Override
     public void cancelPolicy(String reason) {
         cancelled = true;
+    }
+
+    // Applies a lifecycle transition and mirrors the new status to the policyStatus search attribute.
+    private void updateStatus(PolicyStatus status) {
+        state.setStatus(status);
+        PolicySearchAttributes.upsertPolicyStatus(status);
     }
 
     // --- Additional insured updates (with validators) ---

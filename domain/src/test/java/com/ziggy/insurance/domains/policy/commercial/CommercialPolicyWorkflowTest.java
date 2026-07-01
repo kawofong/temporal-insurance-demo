@@ -46,6 +46,7 @@ class CommercialPolicyWorkflowTest {
     void startsPolicyInActiveState() {
         try (TestWorkflowEnvironment env = TestWorkflowEnvironment.newInstance()) {
             env.registerSearchAttribute(PolicySearchAttributes.POLICY_HOLDER_ID, IndexedValueType.INDEXED_VALUE_TYPE_KEYWORD);
+            env.registerSearchAttribute(PolicySearchAttributes.POLICY_STATUS, IndexedValueType.INDEXED_VALUE_TYPE_KEYWORD);
             Worker worker = env.newWorker(TaskQueues.POLICY_TASK_QUEUE);
             worker.registerWorkflowImplementationTypes(CommercialPolicyWorkflowImpl.class);
             env.start();
@@ -67,6 +68,7 @@ class CommercialPolicyWorkflowTest {
     void fullLifecycleTransition() {
         try (TestWorkflowEnvironment env = TestWorkflowEnvironment.newInstance()) {
             env.registerSearchAttribute(PolicySearchAttributes.POLICY_HOLDER_ID, IndexedValueType.INDEXED_VALUE_TYPE_KEYWORD);
+            env.registerSearchAttribute(PolicySearchAttributes.POLICY_STATUS, IndexedValueType.INDEXED_VALUE_TYPE_KEYWORD);
             Worker worker = env.newWorker(TaskQueues.POLICY_TASK_QUEUE);
             worker.registerWorkflowImplementationTypes(CommercialPolicyWorkflowImpl.class);
             env.start();
@@ -98,6 +100,7 @@ class CommercialPolicyWorkflowTest {
     void cancelPolicyCompletesWorkflow() {
         try (TestWorkflowEnvironment env = TestWorkflowEnvironment.newInstance()) {
             env.registerSearchAttribute(PolicySearchAttributes.POLICY_HOLDER_ID, IndexedValueType.INDEXED_VALUE_TYPE_KEYWORD);
+            env.registerSearchAttribute(PolicySearchAttributes.POLICY_STATUS, IndexedValueType.INDEXED_VALUE_TYPE_KEYWORD);
             Worker worker = env.newWorker(TaskQueues.POLICY_TASK_QUEUE);
             worker.registerWorkflowImplementationTypes(CommercialPolicyWorkflowImpl.class);
             env.start();
@@ -117,6 +120,7 @@ class CommercialPolicyWorkflowTest {
     void addAdditionalInsuredReturnsCount() {
         try (TestWorkflowEnvironment env = TestWorkflowEnvironment.newInstance()) {
             env.registerSearchAttribute(PolicySearchAttributes.POLICY_HOLDER_ID, IndexedValueType.INDEXED_VALUE_TYPE_KEYWORD);
+            env.registerSearchAttribute(PolicySearchAttributes.POLICY_STATUS, IndexedValueType.INDEXED_VALUE_TYPE_KEYWORD);
             Worker worker = env.newWorker(TaskQueues.POLICY_TASK_QUEUE);
             worker.registerWorkflowImplementationTypes(CommercialPolicyWorkflowImpl.class);
             env.start();
@@ -140,6 +144,7 @@ class CommercialPolicyWorkflowTest {
     void addAdditionalInsuredRejectsDuplicateId() {
         try (TestWorkflowEnvironment env = TestWorkflowEnvironment.newInstance()) {
             env.registerSearchAttribute(PolicySearchAttributes.POLICY_HOLDER_ID, IndexedValueType.INDEXED_VALUE_TYPE_KEYWORD);
+            env.registerSearchAttribute(PolicySearchAttributes.POLICY_STATUS, IndexedValueType.INDEXED_VALUE_TYPE_KEYWORD);
             Worker worker = env.newWorker(TaskQueues.POLICY_TASK_QUEUE);
             worker.registerWorkflowImplementationTypes(CommercialPolicyWorkflowImpl.class);
             env.start();
@@ -164,6 +169,7 @@ class CommercialPolicyWorkflowTest {
     void removeAdditionalInsuredSucceeds() {
         try (TestWorkflowEnvironment env = TestWorkflowEnvironment.newInstance()) {
             env.registerSearchAttribute(PolicySearchAttributes.POLICY_HOLDER_ID, IndexedValueType.INDEXED_VALUE_TYPE_KEYWORD);
+            env.registerSearchAttribute(PolicySearchAttributes.POLICY_STATUS, IndexedValueType.INDEXED_VALUE_TYPE_KEYWORD);
             Worker worker = env.newWorker(TaskQueues.POLICY_TASK_QUEUE);
             worker.registerWorkflowImplementationTypes(CommercialPolicyWorkflowImpl.class);
             env.start();
@@ -184,6 +190,7 @@ class CommercialPolicyWorkflowTest {
     void removeAdditionalInsuredRejectsMissingId() {
         try (TestWorkflowEnvironment env = TestWorkflowEnvironment.newInstance()) {
             env.registerSearchAttribute(PolicySearchAttributes.POLICY_HOLDER_ID, IndexedValueType.INDEXED_VALUE_TYPE_KEYWORD);
+            env.registerSearchAttribute(PolicySearchAttributes.POLICY_STATUS, IndexedValueType.INDEXED_VALUE_TYPE_KEYWORD);
             Worker worker = env.newWorker(TaskQueues.POLICY_TASK_QUEUE);
             worker.registerWorkflowImplementationTypes(CommercialPolicyWorkflowImpl.class);
             env.start();
@@ -205,6 +212,7 @@ class CommercialPolicyWorkflowTest {
     void businessNameAccessible() {
         try (TestWorkflowEnvironment env = TestWorkflowEnvironment.newInstance()) {
             env.registerSearchAttribute(PolicySearchAttributes.POLICY_HOLDER_ID, IndexedValueType.INDEXED_VALUE_TYPE_KEYWORD);
+            env.registerSearchAttribute(PolicySearchAttributes.POLICY_STATUS, IndexedValueType.INDEXED_VALUE_TYPE_KEYWORD);
             Worker worker = env.newWorker(TaskQueues.POLICY_TASK_QUEUE);
             worker.registerWorkflowImplementationTypes(CommercialPolicyWorkflowImpl.class);
             env.start();
