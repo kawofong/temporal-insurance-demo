@@ -1,0 +1,93 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "temporal-server",
+            "type": "shell",
+            "command": "source ~/.zshrc || mise run temporal:dev",
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "isBackground": true,
+            "problemMatcher": [
+                {
+                    "pattern": [
+                        {
+                            "regexp": "^(NOMATCH)(.*)$",
+                            "file": 1,
+                            "message": 2,
+                            "kind": "file"
+                        }
+                    ],
+                    "background": {
+                        "activeOnStart": true,
+                        "beginsPattern": "Temporal CLI",
+                        "endsPattern": "Temporal Server:"
+                    }
+                }
+            ],
+            "presentation": {
+                "group": "temporal",
+                "reveal": "always",
+                "panel": "new"
+            }
+        },
+        {
+            "label": "worker",
+            "type": "shell",
+            "command": "source ~/.zshrc || mise run temporal:worker",
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "isBackground": true,
+            "dependsOn": ["temporal-server"],
+            "problemMatcher": [],
+            "presentation": {
+                "group": "temporal",
+                "reveal": "always",
+                "panel": "new"
+            }
+        },
+        {
+            "label": "api",
+            "type": "shell",
+            "command": "source ~/.zshrc || mise run api",
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "isBackground": true,
+            "dependsOn": ["temporal-server"],
+            "problemMatcher": [],
+            "presentation": {
+                "group": "demo",
+                "reveal": "always",
+                "panel": "new"
+            }
+        },
+        {
+            "label": "ui",
+            "type": "shell",
+            "command": "source ~/.zshrc || mise run portal:dev",
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "isBackground": true,
+            "problemMatcher": [],
+            "presentation": {
+                "group": "demo",
+                "reveal": "always",
+                "panel": "new"
+            }
+        },
+        {
+            "label": "Start Local",
+            "dependsOn": ["temporal-server", "api", "ui", "worker"],
+            "problemMatcher": [],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        }
+    ]
+}
+

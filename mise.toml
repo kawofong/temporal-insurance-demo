@@ -6,7 +6,7 @@ node = "22"
 
 [tasks."temporal:dev"]
 description = "Run a local Temporal dev server"
-run = "temporal server start-dev"
+run = "temporal server start-dev --search-attribute policyHolderId=Keyword"
 
 [tasks."temporal:worker"]
 description = "Run the Spring Boot Temporal worker against the local dev server"
