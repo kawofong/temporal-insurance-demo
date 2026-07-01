@@ -199,4 +199,38 @@ class CommercialPolicyControllerTest {
                     """))
             .andExpect(status().isAccepted());
     }
+
+    @Test
+    @Order(50)
+    void addAdditionalInsuredWithoutIdGeneratesId() throws Exception {
+        String genPolicyId = "COMM-GEN-001";
+        String createBody = """
+            {
+                "policyId": "%s",
+                "policyHolderId": "PH-001",
+                "effectiveDate": 1700000000,
+                "expiryDate": 1731536000,
+                "businessName": "Generated Ventures LLC",
+                "additionalInsureds": []
+            }
+            """.formatted(genPolicyId);
+        mockMvc.perform(post(BASE_URL)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(createBody))
+            .andExpect(status().isCreated());
+
+        // Client omits the additional insured id; the system assigns one.
+        mockMvc.perform(post(BASE_URL + "/" + genPolicyId + "/additional-insureds")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    { "name": "Generated Partner", "relationship": "CLIENT" }
+                    """))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.count").value(1));
+
+        mockMvc.perform(get(BASE_URL + "/" + genPolicyId))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.additionalInsureds[0].name").value("Generated Partner"))
+            .andExpect(jsonPath("$.additionalInsureds[0].additionalInsuredId").isNotEmpty());
+    }
 }

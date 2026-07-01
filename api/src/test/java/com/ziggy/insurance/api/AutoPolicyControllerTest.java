@@ -264,6 +264,40 @@ class AutoPolicyControllerTest {
     }
 
     @Test
+    @Order(50)
+    void addDriverWithoutIdGeneratesId() throws Exception {
+        String genPolicyId = "AUTO-GEN-001";
+        String createBody = """
+            {
+                "policyId": "%s",
+                "policyHolderId": "PH-001",
+                "effectiveDate": 1700000000,
+                "expiryDate": 1731536000,
+                "insuredVehicles": [],
+                "listedDrivers": []
+            }
+            """.formatted(genPolicyId);
+        mockMvc.perform(post(BASE_URL)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(createBody))
+            .andExpect(status().isCreated());
+
+        // Client omits the driver id; the system assigns one.
+        mockMvc.perform(post(BASE_URL + "/" + genPolicyId + "/drivers")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    { "name": "Morgan", "licenseNumber": "DL-GEN-001" }
+                    """))
+            .andExpect(status().isAccepted());
+
+        Thread.sleep(500);
+        mockMvc.perform(get(BASE_URL + "/" + genPolicyId))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.listedDrivers[0].name").value("Morgan"))
+            .andExpect(jsonPath("$.listedDrivers[0].driverId").isNotEmpty());
+    }
+
+    @Test
     @Order(100)
     void getNonExistentPolicyReturns404() throws Exception {
         mockMvc.perform(get(BASE_URL + "/DOES-NOT-EXIST"))

@@ -14,9 +14,8 @@ const ADD_ACTIONS = {
     label: "Add Driver",
     endpoint: "drivers",
     kind: "signal",
-    initialValues: { driverId: "", name: "", licenseNumber: "" },
+    initialValues: { name: "", licenseNumber: "" },
     fields: [
-      { name: "driverId", label: "Driver ID" },
       { name: "name", label: "Name" },
       { name: "licenseNumber", label: "License Number" },
     ],
@@ -27,9 +26,8 @@ const ADD_ACTIONS = {
     label: "Add Loss Payee",
     endpoint: "loss-payees",
     kind: "update",
-    initialValues: { lossPayeeId: "", name: "", loanNumber: "" },
+    initialValues: { name: "", loanNumber: "" },
     fields: [
-      { name: "lossPayeeId", label: "Loss Payee ID" },
       { name: "name", label: "Name" },
       { name: "loanNumber", label: "Loan Number" },
     ],
@@ -40,9 +38,8 @@ const ADD_ACTIONS = {
     label: "Add Additional Insured",
     endpoint: "additional-insureds",
     kind: "update",
-    initialValues: { additionalInsuredId: "", name: "", relationship: "" },
+    initialValues: { name: "", relationship: "" },
     fields: [
-      { name: "additionalInsuredId", label: "Additional Insured ID" },
       { name: "name", label: "Name" },
       { name: "relationship", label: "Relationship" },
     ],
@@ -111,10 +108,27 @@ function formatFieldLabel(value) {
   return titleCase(String(value).replace(/([a-z0-9])([A-Z])/g, "$1 $2"));
 }
 
+// Internal entity identifiers that are not meaningful to policyholders.
+const HIDDEN_ENTITY_ID_FIELDS = new Set([
+  "vehicleId",
+  "driverId",
+  "propertyId",
+  "lossPayeeId",
+  "additionalInsuredId",
+]);
+
 function formatFieldValue(value) {
   if (value === null || value === undefined || value === "") return "—";
   if (Array.isArray(value)) return `${value.length} item${value.length === 1 ? "" : "s"}`;
-  if (typeof value === "object") return Object.values(value).filter(Boolean).join(" ") || "—";
+  if (typeof value === "object") {
+    return (
+      Object.entries(value)
+        .filter(([key]) => !HIDDEN_ENTITY_ID_FIELDS.has(key))
+        .map(([, entryValue]) => entryValue)
+        .filter(Boolean)
+        .join(" ") || "—"
+    );
+  }
   return String(value);
 }
 
@@ -197,7 +211,9 @@ function PolicyCard({ policy, onSelect }) {
             <div className="policy-card-id">{policy.policyId}</div>
           </div>
         </div>
-        <span className="policy-card-status">{formatStatus(policy.status)}</span>
+        <span className={`policy-card-status${isCancelled(policy) ? " policy-card-status--cancelled" : ""}`}>
+          {formatStatus(policy.status)}
+        </span>
       </div>
       <div className="policy-card-details">
         <div className="policy-detail policy-detail--descriptor">
@@ -349,12 +365,27 @@ function PolicyModal({ policy, onClose, onPolicyChange }) {
 
         <div className="policy-modal-actions">
           {addAction && !cancelled && (
-            <button type="button" onClick={() => setIsAddOpen((open) => !open)} disabled={!addEnabled || isBusy}>
+            <button
+              type="button"
+              onClick={() => {
+                setShowCancel(false);
+                setIsAddOpen((open) => !open);
+              }}
+              disabled={!addEnabled || isBusy}
+            >
               {addAction.label}
             </button>
           )}
           {!cancelled && (
-            <button className="policy-modal-danger policy-modal-cancel" type="button" onClick={() => setShowCancel(true)} disabled={isBusy}>
+            <button
+              className="policy-modal-danger policy-modal-cancel"
+              type="button"
+              onClick={() => {
+                setIsAddOpen(false);
+                setShowCancel(true);
+              }}
+              disabled={isBusy}
+            >
               Cancel Policy
             </button>
           )}

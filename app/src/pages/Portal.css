@@ -129,6 +129,11 @@
   color: var(--success);
 }
 
+.policy-card-status--cancelled {
+  border-color: var(--text-muted);
+  color: var(--text-muted);
+}
+
 .policy-card-details {
   display: flex;
   flex-direction: column;

@@ -211,4 +211,42 @@ class PropertyPolicyControllerTest {
                     """))
             .andExpect(status().isAccepted());
     }
+
+    @Test
+    @Order(50)
+    void addLossPayeeWithoutIdGeneratesId() throws Exception {
+        String genPolicyId = "PROP-GEN-001";
+        String createBody = """
+            {
+                "policyId": "%s",
+                "policyHolderId": "PH-001",
+                "effectiveDate": 1700000000,
+                "expiryDate": 1731536000,
+                "property": {
+                    "propertyId": "P-GEN",
+                    "address": "1 Generated Way",
+                    "propertyType": "SINGLE_FAMILY"
+                },
+                "lossPayees": []
+            }
+            """.formatted(genPolicyId);
+        mockMvc.perform(post(BASE_URL)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(createBody))
+            .andExpect(status().isCreated());
+
+        // Client omits the loss payee id; the system assigns one.
+        mockMvc.perform(post(BASE_URL + "/" + genPolicyId + "/loss-payees")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    { "name": "Generated Bank", "loanNumber": "LN-GEN" }
+                    """))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.count").value(1));
+
+        mockMvc.perform(get(BASE_URL + "/" + genPolicyId))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.lossPayees[0].name").value("Generated Bank"))
+            .andExpect(jsonPath("$.lossPayees[0].lossPayeeId").isNotEmpty());
+    }
 }

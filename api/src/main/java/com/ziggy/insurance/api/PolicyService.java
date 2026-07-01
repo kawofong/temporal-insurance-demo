@@ -25,6 +25,7 @@ import io.temporal.client.WorkflowClient;
 import io.temporal.client.WorkflowOptions;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -40,6 +41,16 @@ public class PolicyService {
 
     public static String workflowId(String type, String policyId) {
         return "policy/" + type + "/" + policyId;
+    }
+
+    // Generates a system-assigned identifier for a policy line item (driver, loss
+    // payee, additional insured). Callers no longer need to supply these ids.
+    private static String generateEntityId(String prefix) {
+        return prefix + "-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+    }
+
+    private static boolean hasText(String value) {
+        return value != null && !value.isBlank();
     }
 
     // --- Auto policy ---
@@ -75,9 +86,12 @@ public class PolicyService {
     }
 
     public void addDriver(String policyId, Driver driver) {
+        Driver toAdd = hasText(driver.driverId())
+            ? driver
+            : new Driver(generateEntityId("D"), driver.name(), driver.licenseNumber());
         AutoPolicyWorkflow wf = workflowClient.newWorkflowStub(
             AutoPolicyWorkflow.class, workflowId("auto", policyId));
-        wf.addDriver(driver);
+        wf.addDriver(toAdd);
     }
 
     public void removeDriver(String policyId, String driverId) {
@@ -107,9 +121,12 @@ public class PolicyService {
     }
 
     public int addLossPayee(String policyId, LossPayee lossPayee) {
+        LossPayee toAdd = hasText(lossPayee.lossPayeeId())
+            ? lossPayee
+            : new LossPayee(generateEntityId("LP"), lossPayee.name(), lossPayee.loanNumber());
         PropertyPolicyWorkflow wf = workflowClient.newWorkflowStub(
             PropertyPolicyWorkflow.class, workflowId("property", policyId));
-        return wf.addLossPayee(lossPayee);
+        return wf.addLossPayee(toAdd);
     }
 
     public void removeLossPayee(String policyId, String lossPayeeId) {
@@ -139,9 +156,13 @@ public class PolicyService {
     }
 
     public int addAdditionalInsured(String policyId, AdditionalInsured additionalInsured) {
+        AdditionalInsured toAdd = hasText(additionalInsured.additionalInsuredId())
+            ? additionalInsured
+            : new AdditionalInsured(
+                generateEntityId("AI"), additionalInsured.name(), additionalInsured.relationship());
         CommercialPolicyWorkflow wf = workflowClient.newWorkflowStub(
             CommercialPolicyWorkflow.class, workflowId("commercial", policyId));
-        return wf.addAdditionalInsured(additionalInsured);
+        return wf.addAdditionalInsured(toAdd);
     }
 
     public void removeAdditionalInsured(String policyId, String additionalInsuredId) {
