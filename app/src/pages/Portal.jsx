@@ -7,6 +7,49 @@ import { policyholder, recentClaims } from "../data/mockData";
 import "./Portal.css";
 
 const POLICY_ENDPOINT = "/api/v1/policies";
+const SIGNAL_REFRESH_DELAY_MS = 900;
+
+const ADD_ACTIONS = {
+  auto: {
+    label: "Add Driver",
+    endpoint: "drivers",
+    kind: "signal",
+    initialValues: { driverId: "", name: "", licenseNumber: "" },
+    fields: [
+      { name: "driverId", label: "Driver ID" },
+      { name: "name", label: "Name" },
+      { name: "licenseNumber", label: "License Number" },
+    ],
+    buildPayload: (values) => values,
+    successMessage: "Driver add submitted. Refreshing policy...",
+  },
+  property: {
+    label: "Add Loss Payee",
+    endpoint: "loss-payees",
+    kind: "update",
+    initialValues: { lossPayeeId: "", name: "", loanNumber: "" },
+    fields: [
+      { name: "lossPayeeId", label: "Loss Payee ID" },
+      { name: "name", label: "Name" },
+      { name: "loanNumber", label: "Loan Number" },
+    ],
+    buildPayload: (values) => values,
+    successLabel: "Loss payee count",
+  },
+  commercial: {
+    label: "Add Additional Insured",
+    endpoint: "additional-insureds",
+    kind: "update",
+    initialValues: { additionalInsuredId: "", name: "", relationship: "" },
+    fields: [
+      { name: "additionalInsuredId", label: "Additional Insured ID" },
+      { name: "name", label: "Name" },
+      { name: "relationship", label: "Relationship" },
+    ],
+    buildPayload: (values) => values,
+    successLabel: "Additional insured count",
+  },
+};
 
 function getStatusClass(status) {
   const map = {
@@ -36,6 +79,15 @@ function titleCase(value) {
 
 function formatStatus(status) {
   return titleCase(status || "Unknown");
+}
+
+function isCancelled(policy) {
+  return String(policy?.status || "").toUpperCase() === "CANCELLED";
+}
+
+function canAddToPolicy(policy) {
+  const status = String(policy?.status || "").toUpperCase();
+  return status === "ACTIVE" || status === "RENEWAL_PENDING";
 }
 
 function formatDate(value) {
@@ -102,6 +154,15 @@ function getPolicyDescriptor(policy) {
   return "Insurance policy";
 }
 
+async function readApiError(response, fallback) {
+  try {
+    const body = await response.json();
+    return body.message || body.error || fallback;
+  } catch {
+    return fallback;
+  }
+}
+
 function DetailRows({ data, exclude = [] }) {
   const rows = Object.entries(data || {}).filter(([key]) => !exclude.includes(key));
 
@@ -153,8 +214,102 @@ function PolicyCard({ policy, onSelect }) {
   );
 }
 
-function PolicyModal({ policy, onClose }) {
+function PolicyModal({ policy, onClose, onPolicyChange }) {
+  const addAction = ADD_ACTIONS[policy?.policyType];
+  const [isAddOpen, setIsAddOpen] = useState(false);
+  const [addValues, setAddValues] = useState(addAction?.initialValues || {});
+  const [cancelReason, setCancelReason] = useState("");
+  const [showCancel, setShowCancel] = useState(false);
+  const [isBusy, setIsBusy] = useState(false);
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    setIsAddOpen(false);
+    setAddValues(addAction?.initialValues || {});
+    setCancelReason("");
+    setShowCancel(false);
+    setIsBusy(false);
+    setMessage("");
+    setError("");
+  }, [policy?.policyId, policy?.policyType, addAction]);
+
   if (!policy) return null;
+
+  const basePath = `${POLICY_ENDPOINT}/${policy.policyType}/${policy.policyId}`;
+
+  async function refreshPolicy(successMessage = "Policy refreshed.") {
+    setIsBusy(true);
+    setError("");
+    try {
+      const response = await fetch(basePath);
+      if (!response.ok) throw new Error(await readApiError(response, `Refresh returned ${response.status}`));
+      const data = await response.json();
+      onPolicyChange({ ...data, policyType: policy.policyType });
+      setMessage(successMessage);
+    } catch (refreshError) {
+      setError(refreshError.message || "Unable to refresh policy.");
+    } finally {
+      setIsBusy(false);
+    }
+  }
+
+  async function submitAdd(event) {
+    event.preventDefault();
+    setIsBusy(true);
+    setError("");
+    setMessage("");
+    try {
+      const response = await fetch(`${basePath}/${addAction.endpoint}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(addAction.buildPayload(addValues)),
+      });
+      if (!response.ok) throw new Error(await readApiError(response, `Add returned ${response.status}`));
+      setAddValues(addAction.initialValues);
+      setIsAddOpen(false);
+      if (addAction.kind === "signal") {
+        // Signals are fire-and-forget (202, no body); state updates asynchronously.
+        setMessage(addAction.successMessage);
+        window.setTimeout(() => refreshPolicy(addAction.successMessage), SIGNAL_REFRESH_DELAY_MS);
+      } else {
+        // Updates are synchronous and return the new line-item count.
+        const data = await response.json();
+        await refreshPolicy(`${addAction.successLabel}: ${data.count}`);
+      }
+    } catch (addError) {
+      setError(addError.message || `Unable to ${addAction.label.toLowerCase()}.`);
+      setIsBusy(false);
+    }
+  }
+
+  async function submitCancel(event) {
+    event.preventDefault();
+    if (!cancelReason.trim()) {
+      setError("Cancellation reason is required.");
+      return;
+    }
+    setIsBusy(true);
+    setError("");
+    setMessage("");
+    try {
+      const response = await fetch(`${basePath}/cancel`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reason: cancelReason.trim() }),
+      });
+      if (!response.ok) throw new Error(await readApiError(response, `Cancel returned ${response.status}`));
+      setMessage("Cancellation submitted. Refreshing policy status...");
+      setShowCancel(false);
+      window.setTimeout(refreshPolicy, SIGNAL_REFRESH_DELAY_MS);
+    } catch (cancelError) {
+      setError(cancelError.message || "Unable to cancel policy.");
+      setIsBusy(false);
+    }
+  }
+
+  const cancelled = isCancelled(policy);
+  const addEnabled = addAction && canAddToPolicy(policy);
 
   return (
     <div className="policy-modal-backdrop" role="presentation" onClick={onClose}>
@@ -190,12 +345,53 @@ function PolicyModal({ policy, onClose }) {
           <DetailRows data={policy} exclude={["policyType"]} />
         </div>
 
+        {(message || error) && <div className={`policy-modal-notice ${error ? "policy-modal-notice--error" : ""}`}>{error || message}</div>}
+
         <div className="policy-modal-actions">
-          <button type="button">Make Payment</button>
-          <button type="button">Update Policy</button>
-          <button type="button">Start Claim</button>
-          <button type="button">Cancel Policy</button>
+          {addAction && !cancelled && (
+            <button type="button" onClick={() => setIsAddOpen((open) => !open)} disabled={!addEnabled || isBusy}>
+              {addAction.label}
+            </button>
+          )}
+          {!cancelled && (
+            <button className="policy-modal-danger policy-modal-cancel" type="button" onClick={() => setShowCancel(true)} disabled={isBusy}>
+              Cancel Policy
+            </button>
+          )}
         </div>
+
+        {addAction && isAddOpen && !cancelled && (
+          <form className="policy-action-form" onSubmit={submitAdd}>
+            <h4>{addAction.label}</h4>
+            {addAction.fields.map((field) => (
+              <label key={field.name}>
+                {field.label}
+                <input
+                  type={field.type || "text"}
+                  value={addValues[field.name]}
+                  onChange={(event) => setAddValues((values) => ({ ...values, [field.name]: event.target.value }))}
+                  required
+                />
+              </label>
+            ))}
+            <button type="submit" disabled={isBusy}>{isBusy ? "Submitting..." : "Submit"}</button>
+          </form>
+        )}
+
+        {showCancel && !cancelled && (
+          <form className="policy-action-form policy-action-form--danger" onSubmit={submitCancel}>
+            <h4>Cancel Policy</h4>
+            <p>Cancelling is destructive, irreversible, and completes the policy workflow.</p>
+            <label>
+              Reason
+              <textarea value={cancelReason} onChange={(event) => setCancelReason(event.target.value)} required />
+            </label>
+            <div className="policy-form-actions">
+              <button type="button" onClick={() => setShowCancel(false)} disabled={isBusy}>Keep Policy</button>
+              <button type="submit" disabled={isBusy}>{isBusy ? "Cancelling..." : "Confirm Cancel"}</button>
+            </div>
+          </form>
+        )}
       </section>
     </div>
   );
@@ -232,6 +428,15 @@ function Portal() {
   }, []);
 
   const hasPolicies = useMemo(() => policies.length > 0, [policies]);
+
+  const handlePolicyChange = (updatedPolicy) => {
+    setSelectedPolicy(updatedPolicy);
+    setPolicies((currentPolicies) =>
+      currentPolicies.map((policy) =>
+        policy.policyType === updatedPolicy.policyType && policy.policyId === updatedPolicy.policyId ? updatedPolicy : policy,
+      ),
+    );
+  };
 
   const handleLogout = () => {
     navigate("/login");
@@ -300,7 +505,7 @@ function Portal() {
         </div>
       </section>
 
-      <PolicyModal policy={selectedPolicy} onClose={() => setSelectedPolicy(null)} />
+      <PolicyModal policy={selectedPolicy} onClose={() => setSelectedPolicy(null)} onPolicyChange={handlePolicyChange} />
 
       <footer className="portal-footer">Ziggy Insurance ★ Policyholder Portal ★ v1.0</footer>
     </div>
