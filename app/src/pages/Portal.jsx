@@ -418,8 +418,8 @@ function PolicyModal({ policy, onClose, onPolicyChange }) {
               <textarea value={cancelReason} onChange={(event) => setCancelReason(event.target.value)} required />
             </label>
             <div className="policy-form-actions">
-              <button type="button" onClick={() => setShowCancel(false)} disabled={isBusy}>Keep Policy</button>
-              <button type="submit" disabled={isBusy}>{isBusy ? "Cancelling..." : "Confirm Cancel"}</button>
+              <button className="policy-form-keep" type="button" onClick={() => setShowCancel(false)} disabled={isBusy}>Keep Policy</button>
+              <button className="policy-form-confirm" type="submit" disabled={isBusy}>{isBusy ? "Cancelling..." : "Confirm Cancel"}</button>
             </div>
           </form>
         )}

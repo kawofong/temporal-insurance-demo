@@ -485,3 +485,16 @@
   flex-wrap: wrap;
   gap: 12px;
 }
+
+/* Keep Policy is the safe outcome (green); Confirm Cancel is destructive (red)
+   and is pushed to the bottom-right of the form. */
+.policy-action-form .policy-form-keep {
+  border-color: var(--success);
+  color: var(--success);
+}
+
+.policy-action-form .policy-form-confirm {
+  border-color: var(--danger);
+  color: var(--danger);
+  margin-left: auto;
+}
