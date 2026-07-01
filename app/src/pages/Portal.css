@@ -74,14 +74,20 @@
 }
 
 .policy-card {
+  font-family: 'Press Start 2P', monospace;
+  text-align: left;
+  color: inherit;
+  cursor: pointer;
   border: 3px solid var(--border-pixel);
   background: var(--bg-card);
   padding: 24px;
   box-shadow: 4px 4px 0 var(--purple-dim);
   transition: all 0.1s;
+  width: 100%;
 }
 
-.policy-card:hover {
+.policy-card:hover,
+.policy-card:focus-visible {
   border-color: var(--purple-light);
   box-shadow: 6px 6px 0 var(--purple-dim);
   transform: translate(-2px, -2px);
@@ -132,7 +138,13 @@
 .policy-detail {
   display: flex;
   justify-content: space-between;
+  gap: 16px;
   font-size: 10px;
+}
+
+.policy-detail--descriptor {
+  justify-content: flex-start;
+  margin-bottom: 6px;
 }
 
 .policy-detail-label {
@@ -142,6 +154,7 @@
 .policy-detail-value {
   color: var(--text-primary);
   text-align: right;
+  line-height: 1.6;
 }
 
 /* Claims section */
@@ -224,4 +237,152 @@
   color: var(--text-muted);
   padding: 32px;
   border-top: 2px dashed var(--border-pixel);
+}
+
+
+.policies-placeholder {
+  border: 3px dashed var(--border-pixel);
+  background: var(--bg-panel);
+  color: var(--text-muted);
+  font-size: 11px;
+  line-height: 1.8;
+  padding: 32px;
+  margin-bottom: 40px;
+  text-align: center;
+  box-shadow: 4px 4px 0 var(--purple-dim);
+}
+
+.policies-placeholder--error {
+  color: var(--warning);
+}
+
+.policy-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(5, 4, 20, 0.78);
+}
+
+.policy-modal {
+  width: min(760px, 100%);
+  max-height: 88vh;
+  overflow-y: auto;
+  border: 3px solid var(--border-pixel);
+  background: var(--bg-panel);
+  padding: 24px;
+  box-shadow: 6px 6px 0 var(--purple-dim);
+}
+
+.policy-modal-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding-bottom: 16px;
+  border-bottom: 2px dashed var(--border-pixel);
+}
+
+.policy-modal-header h3 {
+  color: var(--purple-glow);
+  font-size: 14px;
+  margin: 0 0 10px;
+}
+
+.policy-modal-header p {
+  color: var(--text-muted);
+  font-size: 10px;
+  margin: 0;
+}
+
+.policy-modal-close {
+  border: 2px solid var(--border-pixel);
+  background: transparent;
+  color: var(--text-primary);
+  cursor: pointer;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 18px;
+  height: 40px;
+  width: 40px;
+}
+
+.policy-modal-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+  margin: 20px 0;
+}
+
+.modal-summary-tile {
+  border: 2px solid var(--border-pixel);
+  background: var(--bg-card);
+  padding: 14px;
+}
+
+.modal-summary-tile span {
+  display: block;
+  color: var(--text-muted);
+  font-size: 8px;
+  margin-bottom: 10px;
+}
+
+.modal-summary-tile strong {
+  color: var(--text-primary);
+  font-size: 9px;
+  font-weight: normal;
+}
+
+.policy-modal-details {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.modal-detail {
+  display: grid;
+  grid-template-columns: 180px 1fr;
+  gap: 16px;
+  font-size: 10px;
+  line-height: 1.7;
+}
+
+.modal-detail-label {
+  color: var(--text-muted);
+}
+
+.modal-detail-value,
+.modal-detail-list {
+  color: var(--text-primary);
+}
+
+.modal-detail-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.policy-modal-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.policy-modal-actions button {
+  border: 2px solid var(--border-pixel);
+  background: transparent;
+  color: var(--purple-glow);
+  cursor: pointer;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 9px;
+  padding: 12px 14px;
+}
+
+@media (max-width: 640px) {
+  .modal-detail {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
 }

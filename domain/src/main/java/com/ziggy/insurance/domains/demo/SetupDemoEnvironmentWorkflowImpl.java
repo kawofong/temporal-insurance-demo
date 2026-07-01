@@ -30,8 +30,8 @@ public class SetupDemoEnvironmentWorkflowImpl implements SetupDemoEnvironmentWor
     private static final AutoPolicyInput AUTO_INPUT = new AutoPolicyInput(
         AUTO_POLICY_ID,
         POLICY_HOLDER_ID,
-        1704067200L,  // 2024-01-01 UTC
-        1735689600L,  // 2025-01-01 UTC
+        1767225600L,  // 2026-01-01 UTC
+        1798761600L,  // 2027-01-01 UTC
         List.of(
             new Vehicle("V-DEMO-001", "1HGCV1F34LA000001", "Honda", "Civic", 2024)
         ),
@@ -46,9 +46,9 @@ public class SetupDemoEnvironmentWorkflowImpl implements SetupDemoEnvironmentWor
     private static final PropertyPolicyInput PROPERTY_INPUT = new PropertyPolicyInput(
         PROPERTY_POLICY_ID,
         POLICY_HOLDER_ID,
-        1704067200L,  // 2024-01-01 UTC
-        1735689600L,  // 2025-01-01 UTC
-        new InsuredProperty("PROP-DEMO-001", "100 State Farm Blvd, Bloomington, IL 61710", "SINGLE_FAMILY"),
+        1767225600L,  // 2026-01-01 UTC
+        1798761600L,  // 2027-01-01 UTC
+        new InsuredProperty("PROP-DEMO-001", "123 Fake Street, Anytown, ZZ 00000", "SINGLE_FAMILY"),
         List.of(
             new LossPayee("LP-DEMO-001", "Bloomington National Bank", "LOAN-00001")
         )
@@ -59,11 +59,11 @@ public class SetupDemoEnvironmentWorkflowImpl implements SetupDemoEnvironmentWor
     private static final CommercialPolicyInput COMMERCIAL_INPUT = new CommercialPolicyInput(
         COMMERCIAL_POLICY_ID,
         POLICY_HOLDER_ID,
-        1704067200L,  // 2024-01-01 UTC
-        1735689600L,  // 2025-01-01 UTC
-        "State Farm Insurance Agency - Bloomington",
+        1767225600L,  // 2026-01-01 UTC
+        1798761600L,  // 2027-01-01 UTC
+        "Orbital Ascent Rocketworks LLC",
         List.of(
-            new AdditionalInsured("AI-DEMO-001", "Landmark Properties LLC", "LANDLORD")
+            new AdditionalInsured("AI-DEMO-001", "Spaceport Commerce Center LLC", "LANDLORD")
         )
     );
 
