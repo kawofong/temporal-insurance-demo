@@ -4,29 +4,21 @@ gradle = "8.14.4"
 node = "22"
 "npm:@marp-team/marp-cli" = "4.4.0"
 
-[tasks."temporal:dev-server"]
+[tasks."temporal:dev"]
 description = "Run a local Temporal dev server"
 run = "temporal server start-dev"
-
-[tasks."temporal:test"]
-description = "Run all Java tests"
-run = "./gradlew test"
 
 [tasks."temporal:worker"]
 description = "Run the Spring Boot Temporal worker against the local dev server"
 run = "./gradlew :workers:bootRun"
 
-[tasks."temporal:api"]
+[tasks."test"]
+description = "Run all Java tests"
+run = "./gradlew test"
+
+[tasks."api"]
 description = "Run the Spring Boot HTTP API server against the local dev server"
 run = "./gradlew :api:bootRun"
-
-[tasks."slides"]
-description = "Build presentation slides to docs/presentations"
-run = "marp docs/presentations/presentation.md --html --output docs/presentations/presentation.html"
-
-[tasks."slides:watch"]
-description = "Serve presentation slides with live reload"
-run = "marp --server docs/presentations/"
 
 [tasks."portal:install"]
 description = "Install portal dependencies"
@@ -42,3 +34,11 @@ run = "npm run dev"
 description = "Build portal for production"
 dir = "app"
 run = "npm run build"
+
+[tasks."slides"]
+description = "Build presentation slides to docs/presentations"
+run = "marp docs/presentations/presentation.md --html --output docs/presentations/presentation.html"
+
+[tasks."slides:watch"]
+description = "Serve presentation slides with live reload"
+run = "marp --server docs/presentations/"

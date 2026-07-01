@@ -22,13 +22,13 @@ The demo runs as four long-running processes. Start each in its own terminal, in
 
 ```bash
 # 1. Temporal dev server (UI at http://localhost:8233)
-mise run temporal:dev-server
+mise run temporal:dev
 
 # 2. Worker — executes the policy and demo workflows
 mise run temporal:worker
 
 # 3. HTTP API (Swagger UI at http://localhost:8080/swagger-ui.html)
-mise run temporal:api
+mise run api
 
 # 4. Policyholder portal (http://localhost:5173)
 mise run portal:dev
@@ -56,5 +56,5 @@ mise tasks
 Run the Java test suite:
 
 ```bash
-mise run temporal:test
+mise run test
 ```
