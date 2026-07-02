@@ -15,7 +15,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(WorkflowNotFoundException.class)
     public ResponseEntity<ErrorResponse> handleNotFound(WorkflowNotFoundException ex) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
-            .body(new ErrorResponse("NOT_FOUND", "Policy workflow not found"));
+            .body(new ErrorResponse("NOT_FOUND", "Workflow not found"));
     }
 
     @ExceptionHandler(WorkflowUpdateException.class)
@@ -23,5 +23,11 @@ public class GlobalExceptionHandler {
         String message = ex.getCause() != null ? ex.getCause().getMessage() : ex.getMessage();
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
             .body(new ErrorResponse("VALIDATION_FAILED", message));
+    }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<ErrorResponse> handleValidationFailure(IllegalArgumentException ex) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+            .body(new ErrorResponse("VALIDATION_FAILED", ex.getMessage()));
     }
 }
