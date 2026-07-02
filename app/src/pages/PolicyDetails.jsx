@@ -253,7 +253,9 @@ function PolicyDetails() {
 
   const cancelled = isCancelled(policy);
   const addEnabled = Boolean(addAction) && canAddToPolicy(policy);
-  const fnolEnabled = policyType === "auto" && !cancelled;
+  // Require the policy to have actually loaded: isCancelled(null) is false, so without this
+  // guard a failed fetch on a genuinely cancelled policy would leave the button enabled.
+  const fnolEnabled = policyType === "auto" && policy != null && !cancelled;
 
   return (
     <div className="portal-page">

@@ -55,6 +55,23 @@ function useClaimQueue(status) {
   return { claims, isLoading, error, refresh };
 }
 
+// Shared loading/error/empty/list rendering for both adjuster queues.
+function ClaimQueueList({ isLoading, error, claims, renderItem }) {
+  if (isLoading) return <div className="admin-placeholder">Loading queue...</div>;
+  if (error) return <div className="admin-placeholder">{error}</div>;
+  if (claims.length === 0) return <div className="admin-placeholder">No claims waiting.</div>;
+
+  return (
+    <ul className="admin-queue">
+      {claims.map((claim) => (
+        <li className="admin-queue-item" key={claim.claimId}>
+          {renderItem(claim)}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 function FieldAdjusterPanel() {
   const { claims, isLoading, error, refresh } = useClaimQueue("PENDING_DAMAGE_ASSESSMENT");
   const [selectedClaimId, setSelectedClaimId] = useState(null);
@@ -101,33 +118,28 @@ function FieldAdjusterPanel() {
 
       {notice && <div className="policy-modal-notice">{notice}</div>}
 
-      {isLoading ? (
-        <div className="admin-placeholder">Loading queue...</div>
-      ) : error ? (
-        <div className="admin-placeholder">{error}</div>
-      ) : claims.length === 0 ? (
-        <div className="admin-placeholder">No claims waiting.</div>
-      ) : (
-        <ul className="admin-queue">
-          {claims.map((claim) => (
-            <li className="admin-queue-item" key={claim.claimId}>
-              <div className="admin-queue-item-header">
-                <strong>{claim.claimId}</strong>
-                <button type="button" onClick={() => selectClaim(claim)}>
-                  Assess Damage
-                </button>
-              </div>
-              <p>{claim.incidentDescription}</p>
-              <div className="admin-queue-item-meta">
-                <span>
-                  {claim.vehicleYear} {claim.vehicleMake} {claim.vehicleModel}
-                </span>
-                <span>{claim.incidentLocation}</span>
-              </div>
-            </li>
-          ))}
-        </ul>
-      )}
+      <ClaimQueueList
+        isLoading={isLoading}
+        error={error}
+        claims={claims}
+        renderItem={(claim) => (
+          <>
+            <div className="admin-queue-item-header">
+              <strong>{claim.claimId}</strong>
+              <button type="button" onClick={() => selectClaim(claim)}>
+                Assess Damage
+              </button>
+            </div>
+            <p>{claim.incidentDescription}</p>
+            <div className="admin-queue-item-meta">
+              <span>
+                {claim.vehicleYear} {claim.vehicleMake} {claim.vehicleModel}
+              </span>
+              <span>{claim.incidentLocation}</span>
+            </div>
+          </>
+        )}
+      />
 
       {selectedClaimId && (
         <form className="policy-action-form" onSubmit={submitAssessment}>
@@ -173,7 +185,8 @@ function AdjusterPanel() {
 
   function selectClaim(claim) {
     setSelectedClaim(claim);
-    setApprovedPayoutAmount(claim.estimatedRepairCost || "");
+    // Nullish coalescing (not ||) preserves a legitimate $0 estimated repair cost.
+    setApprovedPayoutAmount(claim.estimatedRepairCost ?? "");
     setNotes("");
     setAdjusterId(DEMO_ADJUSTER_ID);
     setNotice("");
@@ -210,30 +223,25 @@ function AdjusterPanel() {
 
       {notice && <div className="policy-modal-notice">{notice}</div>}
 
-      {isLoading ? (
-        <div className="admin-placeholder">Loading queue...</div>
-      ) : error ? (
-        <div className="admin-placeholder">{error}</div>
-      ) : claims.length === 0 ? (
-        <div className="admin-placeholder">No claims waiting.</div>
-      ) : (
-        <ul className="admin-queue">
-          {claims.map((claim) => (
-            <li className="admin-queue-item" key={claim.claimId}>
-              <div className="admin-queue-item-header">
-                <strong>{claim.claimId}</strong>
-                <button type="button" onClick={() => selectClaim(claim)}>
-                  Review
-                </button>
-              </div>
-              <p>{claim.damageAssessment}</p>
-              <div className="admin-queue-item-meta">
-                <span>Estimated: {formatCurrency(claim.estimatedRepairCost)}</span>
-              </div>
-            </li>
-          ))}
-        </ul>
-      )}
+      <ClaimQueueList
+        isLoading={isLoading}
+        error={error}
+        claims={claims}
+        renderItem={(claim) => (
+          <>
+            <div className="admin-queue-item-header">
+              <strong>{claim.claimId}</strong>
+              <button type="button" onClick={() => selectClaim(claim)}>
+                Review
+              </button>
+            </div>
+            <p>{claim.damageAssessment}</p>
+            <div className="admin-queue-item-meta">
+              <span>Estimated: {formatCurrency(claim.estimatedRepairCost)}</span>
+            </div>
+          </>
+        )}
+      />
 
       {selectedClaim && (
         <form className="policy-action-form" onSubmit={submitApproval}>

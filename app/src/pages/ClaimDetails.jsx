@@ -155,7 +155,9 @@ function ClaimDetails() {
             title="Coverage"
             rows={[
               { label: "Coverage Type", value: claim.coverageType },
-              { label: "Deductible", value: hasValue(claim.deductible) ? formatCurrency(claim.deductible) : null },
+              // Deductible is set alongside coverageType at coverage verification, so gate on
+              // that (rather than the amount itself) to avoid hiding a legitimate $0 deductible.
+              { label: "Deductible", value: hasValue(claim.coverageType) ? formatCurrency(claim.deductible) : null },
             ]}
           />
 
@@ -166,7 +168,9 @@ function ClaimDetails() {
               { label: "Damage Assessment", value: claim.damageAssessment },
               {
                 label: "Estimated Repair Cost",
-                value: hasValue(claim.estimatedRepairCost) ? formatCurrency(claim.estimatedRepairCost) : null,
+                // Gate on damageAssessment (set together with the estimate) so a legitimate
+                // $0 estimate still renders instead of being mistaken for "not yet assessed".
+                value: hasValue(claim.damageAssessment) ? formatCurrency(claim.estimatedRepairCost) : null,
               },
             ]}
           />
@@ -176,7 +180,9 @@ function ClaimDetails() {
             rows={[
               {
                 label: "Approved Payout",
-                value: hasValue(claim.approvedPayoutAmount) ? formatCurrency(claim.approvedPayoutAmount) : null,
+                // Gate on approvedByAdjusterId (set together with the payout) so a legitimate
+                // $0 payout still renders instead of being mistaken for "not yet approved".
+                value: hasValue(claim.approvedByAdjusterId) ? formatCurrency(claim.approvedPayoutAmount) : null,
               },
               { label: "Approved By", value: claim.approvedByAdjusterId },
               { label: "Approved At", value: claim.approvedAt ? formatDate(claim.approvedAt) : null },

@@ -23,9 +23,11 @@ import {
 } from "./policyHelpers";
 import "./Portal.css";
 
+// Gate on the correlated adjuster/assessment fields (rather than the amount itself) so a
+// legitimate $0 payout or estimate still displays instead of being mistaken for "not set".
 function claimAmount(claim) {
-  if (claim.approvedPayoutAmount) return formatCurrency(claim.approvedPayoutAmount);
-  if (claim.estimatedRepairCost) return formatCurrency(claim.estimatedRepairCost);
+  if (claim.approvedByAdjusterId) return formatCurrency(claim.approvedPayoutAmount);
+  if (claim.damageAssessment) return formatCurrency(claim.estimatedRepairCost);
   return "—";
 }
 
