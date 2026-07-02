@@ -53,7 +53,8 @@ public class AutoClaimController {
     @GetMapping
     public AutoClaimListResponse list(
             @RequestParam(required = false) String policyHolderId,
-            @RequestParam(required = false) String policyId) {
-        return claimService.listClaims(policyHolderId, policyId);
+            @RequestParam(required = false) String policyId,
+            @RequestParam(required = false) String status) {
+        return claimService.listClaims(policyHolderId, policyId, status);
     }
 }

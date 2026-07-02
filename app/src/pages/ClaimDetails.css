@@ -1,0 +1,70 @@
+/* Claim details page styles */
+/* Lifecycle status tracker; detail sections reuse policy-details-panel/modal-detail from Portal.css */
+
+.claim-tracker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0;
+  border: 3px solid var(--border-pixel);
+  background: var(--bg-panel);
+  box-shadow: 4px 4px 0 var(--purple-dim);
+  padding: 24px;
+  margin-bottom: 40px;
+}
+
+.claim-tracker-step {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 140px;
+  padding: 8px 12px;
+  font-size: 9px;
+  color: var(--text-muted);
+}
+
+.claim-tracker-dot {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  border: 2px solid var(--border-pixel);
+  background: transparent;
+}
+
+.claim-tracker-step--done .claim-tracker-dot {
+  border-color: var(--success);
+  background: var(--success);
+}
+
+.claim-tracker-step--done .claim-tracker-label {
+  color: var(--success);
+}
+
+.claim-tracker-step--current .claim-tracker-dot {
+  border-color: var(--purple-light);
+  background: var(--purple-light);
+}
+
+.claim-tracker-step--current .claim-tracker-label {
+  color: var(--purple-glow);
+}
+
+.claim-tracker--rejected {
+  border-color: var(--danger);
+  background: var(--bg-panel);
+  box-shadow: 4px 4px 0 var(--purple-dim);
+  padding: 24px;
+  margin-bottom: 40px;
+}
+
+.claim-tracker-rejected-label {
+  color: var(--danger);
+  font-size: 12px;
+  margin-bottom: 12px;
+}
+
+.claim-tracker--rejected p {
+  color: var(--text-muted);
+  font-size: 10px;
+  line-height: 1.8;
+}

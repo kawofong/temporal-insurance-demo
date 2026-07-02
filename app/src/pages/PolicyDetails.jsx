@@ -4,6 +4,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import AdminPanel from "./AdminPanel";
+import { policyholder } from "../data/mockData";
+import { submitFnol } from "./claimHelpers";
 import {
   ADD_ACTIONS,
   POLICY_ENDPOINT,
@@ -19,6 +21,20 @@ import {
 } from "./policyHelpers";
 import "./Portal.css";
 import "./PolicyDetails.css";
+
+// FNOL fields pre-filled from the policy's primary insured vehicle, editable in the form.
+function initialFnolValues(policy) {
+  const vehicle = policy?.insuredVehicles?.[0] || {};
+  return {
+    incidentDescription: "",
+    incidentDate: "",
+    incidentLocation: "",
+    vehicleVin: vehicle.vin || "",
+    vehicleMake: vehicle.make || "",
+    vehicleModel: vehicle.model || "",
+    vehicleYear: vehicle.year || "",
+  };
+}
 
 function DetailRows({ data, exclude = [] }) {
   const rows = Object.entries(data || {}).filter(([key]) => !exclude.includes(key));
@@ -76,9 +92,10 @@ function PolicyDetails() {
   const [loadError, setLoadError] = useState("");
 
   // Pop-up state: which modal is open, plus its form values and status.
-  const [activeModal, setActiveModal] = useState(null); // "add" | "cancel" | null
+  const [activeModal, setActiveModal] = useState(null); // "add" | "cancel" | "fnol" | null
   const [addValues, setAddValues] = useState({});
   const [cancelReason, setCancelReason] = useState("");
+  const [fnolValues, setFnolValues] = useState({});
   const [isBusy, setIsBusy] = useState(false);
   const [notice, setNotice] = useState("");
   const [actionError, setActionError] = useState("");
@@ -132,6 +149,13 @@ function PolicyDetails() {
     setNotice("");
     setCancelReason("");
     setActiveModal("cancel");
+  }
+
+  function openFnol() {
+    setActionError("");
+    setNotice("");
+    setFnolValues(initialFnolValues(policy));
+    setActiveModal("fnol");
   }
 
   // Re-fetches the policy after a mutation so the page reflects new state.
@@ -197,8 +221,39 @@ function PolicyDetails() {
     }
   }
 
+  async function submitFnolClaim(event) {
+    event.preventDefault();
+    if (!fnolValues.vehicleVin?.trim()) {
+      setActionError("Vehicle VIN is required.");
+      return;
+    }
+    setIsBusy(true);
+    setActionError("");
+    setNotice("");
+    try {
+      const response = await submitFnol({
+        policyId,
+        policyHolderId: policyholder.memberId,
+        incidentDescription: fnolValues.incidentDescription,
+        incidentDate: new Date(fnolValues.incidentDate).getTime(),
+        incidentLocation: fnolValues.incidentLocation,
+        vehicleVin: fnolValues.vehicleVin,
+        vehicleMake: fnolValues.vehicleMake,
+        vehicleModel: fnolValues.vehicleModel,
+        vehicleYear: Number(fnolValues.vehicleYear) || 0,
+      });
+      // Early return: the workflow just started, so we route straight to its detail
+      // view without waiting for back-office processing.
+      navigate(`/portal/claims/${response.claimId}`);
+    } catch (fnolError) {
+      setActionError(fnolError.message || "Unable to submit claim.");
+      setIsBusy(false);
+    }
+  }
+
   const cancelled = isCancelled(policy);
   const addEnabled = Boolean(addAction) && canAddToPolicy(policy);
+  const fnolEnabled = policyType === "auto" && !cancelled;
 
   return (
     <div className="portal-page">
@@ -216,8 +271,14 @@ function PolicyDetails() {
           <p>{policyId}</p>
         </div>
         <div className="portal-header-actions">
-          <button className="claim-button" type="button" disabled title="Coming soon">
-            Start a new claim
+          <button
+            className="claim-button"
+            type="button"
+            onClick={openFnol}
+            disabled={!fnolEnabled}
+            title={fnolEnabled ? "" : "Claims are only available for auto policies"}
+          >
+            File a Claim
           </button>
         </div>
       </header>
@@ -314,6 +375,82 @@ function PolicyDetails() {
               </button>
               <button className="policy-form-confirm" type="submit" disabled={isBusy}>
                 {isBusy ? "Cancelling..." : "Confirm Cancel"}
+              </button>
+            </div>
+          </form>
+        </Modal>
+      )}
+
+      {activeModal === "fnol" && (
+        <Modal title="File a Claim" subtitle={policyId} onClose={closeModal}>
+          <form className="policy-action-form" onSubmit={submitFnolClaim}>
+            <label>
+              What happened?
+              <textarea
+                value={fnolValues.incidentDescription || ""}
+                onChange={(event) =>
+                  setFnolValues((values) => ({ ...values, incidentDescription: event.target.value }))
+                }
+                required
+              />
+            </label>
+            <label>
+              Date of incident
+              <input
+                type="date"
+                value={fnolValues.incidentDate || ""}
+                onChange={(event) => setFnolValues((values) => ({ ...values, incidentDate: event.target.value }))}
+                required
+              />
+            </label>
+            <label>
+              Location
+              <input
+                type="text"
+                value={fnolValues.incidentLocation || ""}
+                onChange={(event) =>
+                  setFnolValues((values) => ({ ...values, incidentLocation: event.target.value }))
+                }
+                required
+              />
+            </label>
+            <label>
+              Vehicle VIN
+              <input
+                type="text"
+                value={fnolValues.vehicleVin || ""}
+                onChange={(event) => setFnolValues((values) => ({ ...values, vehicleVin: event.target.value }))}
+                required
+              />
+            </label>
+            <label>
+              Make
+              <input
+                type="text"
+                value={fnolValues.vehicleMake || ""}
+                onChange={(event) => setFnolValues((values) => ({ ...values, vehicleMake: event.target.value }))}
+              />
+            </label>
+            <label>
+              Model
+              <input
+                type="text"
+                value={fnolValues.vehicleModel || ""}
+                onChange={(event) => setFnolValues((values) => ({ ...values, vehicleModel: event.target.value }))}
+              />
+            </label>
+            <label>
+              Year
+              <input
+                type="number"
+                value={fnolValues.vehicleYear || ""}
+                onChange={(event) => setFnolValues((values) => ({ ...values, vehicleYear: event.target.value }))}
+              />
+            </label>
+            {actionError && <div className="policy-modal-notice policy-modal-notice--error">{actionError}</div>}
+            <div className="policy-form-actions">
+              <button type="submit" disabled={isBusy}>
+                {isBusy ? "Submitting..." : "Submit Claim"}
               </button>
             </div>
           </form>
