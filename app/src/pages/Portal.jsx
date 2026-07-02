@@ -4,49 +4,16 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { policyholder, recentClaims } from "../data/mockData";
+import {
+  POLICY_ENDPOINT,
+  formatStatus,
+  getPolicyDescriptor,
+  getPolicyIcon,
+  getPolicySummary,
+  isCancelled,
+  titleCase,
+} from "./policyHelpers";
 import "./Portal.css";
-
-const POLICY_ENDPOINT = "/api/v1/policies";
-const SIGNAL_REFRESH_DELAY_MS = 900;
-
-const ADD_ACTIONS = {
-  auto: {
-    label: "Add Driver",
-    endpoint: "drivers",
-    kind: "signal",
-    initialValues: { name: "", licenseNumber: "" },
-    fields: [
-      { name: "name", label: "Name" },
-      { name: "licenseNumber", label: "License Number" },
-    ],
-    buildPayload: (values) => values,
-    successMessage: "Driver add submitted. Refreshing policy...",
-  },
-  property: {
-    label: "Add Loss Payee",
-    endpoint: "loss-payees",
-    kind: "update",
-    initialValues: { name: "", loanNumber: "" },
-    fields: [
-      { name: "name", label: "Name" },
-      { name: "loanNumber", label: "Loan Number" },
-    ],
-    buildPayload: (values) => values,
-    successLabel: "Loss payee count",
-  },
-  commercial: {
-    label: "Add Additional Insured",
-    endpoint: "additional-insureds",
-    kind: "update",
-    initialValues: { name: "", relationship: "" },
-    fields: [
-      { name: "name", label: "Name" },
-      { name: "relationship", label: "Relationship" },
-    ],
-    buildPayload: (values) => values,
-    successLabel: "Additional insured count",
-  },
-};
 
 function getStatusClass(status) {
   const map = {
@@ -58,80 +25,6 @@ function getStatusClass(status) {
   return map[status] || "in-review";
 }
 
-function getPolicyIcon(type) {
-  const icons = {
-    auto: "🚗",
-    property: "🏠",
-    commercial: "🏢",
-  };
-  return icons[type] || "📋";
-}
-
-function titleCase(value) {
-  if (!value) return "Policy";
-  return String(value)
-    .replace(/[_-]/g, " ")
-    .replace(/\w\S*/g, (word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase());
-}
-
-function formatStatus(status) {
-  return titleCase(status || "Unknown");
-}
-
-function isCancelled(policy) {
-  return String(policy?.status || "").toUpperCase() === "CANCELLED";
-}
-
-function canAddToPolicy(policy) {
-  const status = String(policy?.status || "").toUpperCase();
-  return status === "ACTIVE" || status === "RENEWAL_PENDING";
-}
-
-function formatDate(value) {
-  if (value === null || value === undefined || value === "") return "Not provided";
-
-  const numericValue = Number(value);
-  const date = Number.isFinite(numericValue)
-    ? new Date(numericValue < 10000000000 ? numericValue * 1000 : numericValue)
-    : new Date(value);
-
-  if (Number.isNaN(date.getTime())) return String(value);
-
-  return new Intl.DateTimeFormat("en-US", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  }).format(date);
-}
-
-function formatFieldLabel(value) {
-  return titleCase(String(value).replace(/([a-z0-9])([A-Z])/g, "$1 $2"));
-}
-
-// Internal entity identifiers that are not meaningful to policyholders.
-const HIDDEN_ENTITY_ID_FIELDS = new Set([
-  "vehicleId",
-  "driverId",
-  "propertyId",
-  "lossPayeeId",
-  "additionalInsuredId",
-]);
-
-function formatFieldValue(value) {
-  if (value === null || value === undefined || value === "") return "—";
-  if (Array.isArray(value)) return `${value.length} item${value.length === 1 ? "" : "s"}`;
-  if (typeof value === "object") {
-    return (
-      Object.entries(value)
-        .filter(([key]) => !HIDDEN_ENTITY_ID_FIELDS.has(key))
-        .map(([, entryValue]) => entryValue)
-        .filter(Boolean)
-        .join(" ") || "—"
-    );
-  }
-  return String(value);
-}
-
 function normalizePolicies(response) {
   const groups = ["auto", "property", "commercial"];
 
@@ -139,63 +32,6 @@ function normalizePolicies(response) {
     const policies = Array.isArray(response?.[type]) ? response[type] : [];
     return policies.map((policy) => ({ ...policy, policyType: type }));
   });
-}
-
-function getPolicySummary(policy) {
-  return [
-    { label: "Status", value: formatStatus(policy.status) },
-    { label: "Policy ID", value: policy.policyId || "Not provided" },
-    { label: "Effective", value: formatDate(policy.effectiveDate) },
-    { label: "Expiry", value: formatDate(policy.expiryDate) },
-  ];
-}
-
-function getPolicyDescriptor(policy) {
-  if (policy.policyType === "auto") {
-    const vehicle = policy.insuredVehicles?.[0];
-    return vehicle ? `${vehicle.year} ${vehicle.make} ${vehicle.model}` : "Auto coverage";
-  }
-
-  if (policy.policyType === "property") {
-    const property = policy.property;
-    return property ? formatFieldValue(property) : "Property coverage";
-  }
-
-  if (policy.policyType === "commercial") {
-    return policy.businessName || "Commercial coverage";
-  }
-
-  return "Insurance policy";
-}
-
-async function readApiError(response, fallback) {
-  try {
-    const body = await response.json();
-    return body.message || body.error || fallback;
-  } catch {
-    return fallback;
-  }
-}
-
-function DetailRows({ data, exclude = [] }) {
-  const rows = Object.entries(data || {}).filter(([key]) => !exclude.includes(key));
-
-  return rows.map(([key, value]) => (
-    <div className="modal-detail" key={key}>
-      <span className="modal-detail-label">{formatFieldLabel(key)}</span>
-      {Array.isArray(value) ? (
-        <div className="modal-detail-list">
-          {value.length === 0 ? (
-            <span>None</span>
-          ) : (
-            value.map((item, index) => <span key={`${key}-${index}`}>{formatFieldValue(item)}</span>)
-          )}
-        </div>
-      ) : (
-        <span className="modal-detail-value">{formatFieldValue(value)}</span>
-      )}
-    </div>
-  ));
 }
 
 function PolicyCard({ policy, onSelect }) {
@@ -230,210 +66,11 @@ function PolicyCard({ policy, onSelect }) {
   );
 }
 
-function PolicyModal({ policy, onClose, onPolicyChange }) {
-  const addAction = ADD_ACTIONS[policy?.policyType];
-  const [isAddOpen, setIsAddOpen] = useState(false);
-  const [addValues, setAddValues] = useState(addAction?.initialValues || {});
-  const [cancelReason, setCancelReason] = useState("");
-  const [showCancel, setShowCancel] = useState(false);
-  const [isBusy, setIsBusy] = useState(false);
-  const [message, setMessage] = useState("");
-  const [error, setError] = useState("");
-
-  useEffect(() => {
-    setIsAddOpen(false);
-    setAddValues(addAction?.initialValues || {});
-    setCancelReason("");
-    setShowCancel(false);
-    setIsBusy(false);
-    setMessage("");
-    setError("");
-  }, [policy?.policyId, policy?.policyType, addAction]);
-
-  if (!policy) return null;
-
-  const basePath = `${POLICY_ENDPOINT}/${policy.policyType}/${policy.policyId}`;
-
-  async function refreshPolicy(successMessage = "Policy refreshed.") {
-    setIsBusy(true);
-    setError("");
-    try {
-      const response = await fetch(basePath);
-      if (!response.ok) throw new Error(await readApiError(response, `Refresh returned ${response.status}`));
-      const data = await response.json();
-      onPolicyChange({ ...data, policyType: policy.policyType });
-      setMessage(successMessage);
-    } catch (refreshError) {
-      setError(refreshError.message || "Unable to refresh policy.");
-    } finally {
-      setIsBusy(false);
-    }
-  }
-
-  async function submitAdd(event) {
-    event.preventDefault();
-    setIsBusy(true);
-    setError("");
-    setMessage("");
-    try {
-      const response = await fetch(`${basePath}/${addAction.endpoint}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(addAction.buildPayload(addValues)),
-      });
-      if (!response.ok) throw new Error(await readApiError(response, `Add returned ${response.status}`));
-      setAddValues(addAction.initialValues);
-      setIsAddOpen(false);
-      if (addAction.kind === "signal") {
-        // Signals are fire-and-forget (202, no body); state updates asynchronously.
-        setMessage(addAction.successMessage);
-        window.setTimeout(() => refreshPolicy(addAction.successMessage), SIGNAL_REFRESH_DELAY_MS);
-      } else {
-        // Updates are synchronous and return the new line-item count.
-        const data = await response.json();
-        await refreshPolicy(`${addAction.successLabel}: ${data.count}`);
-      }
-    } catch (addError) {
-      setError(addError.message || `Unable to ${addAction.label.toLowerCase()}.`);
-      setIsBusy(false);
-    }
-  }
-
-  async function submitCancel(event) {
-    event.preventDefault();
-    if (!cancelReason.trim()) {
-      setError("Cancellation reason is required.");
-      return;
-    }
-    setIsBusy(true);
-    setError("");
-    setMessage("");
-    try {
-      const response = await fetch(`${basePath}/cancel`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ reason: cancelReason.trim() }),
-      });
-      if (!response.ok) throw new Error(await readApiError(response, `Cancel returned ${response.status}`));
-      setMessage("Cancellation submitted. Refreshing policy status...");
-      setShowCancel(false);
-      window.setTimeout(refreshPolicy, SIGNAL_REFRESH_DELAY_MS);
-    } catch (cancelError) {
-      setError(cancelError.message || "Unable to cancel policy.");
-      setIsBusy(false);
-    }
-  }
-
-  const cancelled = isCancelled(policy);
-  const addEnabled = addAction && canAddToPolicy(policy);
-
-  return (
-    <div className="policy-modal-backdrop" role="presentation" onClick={onClose}>
-      <section
-        className="policy-modal"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="policy-modal-title"
-        onClick={(event) => event.stopPropagation()}
-      >
-        <div className="policy-modal-header">
-          <div>
-            <h3 id="policy-modal-title">
-              {getPolicyIcon(policy.policyType)} {titleCase(policy.policyType)} Policy
-            </h3>
-            <p>{policy.policyId}</p>
-          </div>
-          <button className="policy-modal-close" type="button" onClick={onClose} aria-label="Close policy details">
-            ×
-          </button>
-        </div>
-
-        <div className="policy-modal-summary">
-          {getPolicySummary(policy).map((item) => (
-            <div className="modal-summary-tile" key={item.label}>
-              <span>{item.label}</span>
-              <strong>{item.value}</strong>
-            </div>
-          ))}
-        </div>
-
-        <div className="policy-modal-details">
-          <DetailRows data={policy} exclude={["policyType"]} />
-        </div>
-
-        {(message || error) && <div className={`policy-modal-notice ${error ? "policy-modal-notice--error" : ""}`}>{error || message}</div>}
-
-        <div className="policy-modal-actions">
-          {addAction && !cancelled && (
-            <button
-              type="button"
-              onClick={() => {
-                setShowCancel(false);
-                setIsAddOpen((open) => !open);
-              }}
-              disabled={!addEnabled || isBusy}
-            >
-              {addAction.label}
-            </button>
-          )}
-          {!cancelled && (
-            <button
-              className="policy-modal-danger policy-modal-cancel"
-              type="button"
-              onClick={() => {
-                setIsAddOpen(false);
-                setShowCancel(true);
-              }}
-              disabled={isBusy}
-            >
-              Cancel Policy
-            </button>
-          )}
-        </div>
-
-        {addAction && isAddOpen && !cancelled && (
-          <form className="policy-action-form" onSubmit={submitAdd}>
-            <h4>{addAction.label}</h4>
-            {addAction.fields.map((field) => (
-              <label key={field.name}>
-                {field.label}
-                <input
-                  type={field.type || "text"}
-                  value={addValues[field.name]}
-                  onChange={(event) => setAddValues((values) => ({ ...values, [field.name]: event.target.value }))}
-                  required
-                />
-              </label>
-            ))}
-            <button type="submit" disabled={isBusy}>{isBusy ? "Submitting..." : "Submit"}</button>
-          </form>
-        )}
-
-        {showCancel && !cancelled && (
-          <form className="policy-action-form policy-action-form--danger" onSubmit={submitCancel}>
-            <h4>Cancel Policy</h4>
-            <p>Cancelling is destructive, irreversible, and completes the policy workflow.</p>
-            <label>
-              Reason
-              <textarea value={cancelReason} onChange={(event) => setCancelReason(event.target.value)} required />
-            </label>
-            <div className="policy-form-actions">
-              <button className="policy-form-keep" type="button" onClick={() => setShowCancel(false)} disabled={isBusy}>Keep Policy</button>
-              <button className="policy-form-confirm" type="submit" disabled={isBusy}>{isBusy ? "Cancelling..." : "Confirm Cancel"}</button>
-            </div>
-          </form>
-        )}
-      </section>
-    </div>
-  );
-}
-
 function Portal() {
   const navigate = useNavigate();
   const [policies, setPolicies] = useState([]);
   const [isLoadingPolicies, setIsLoadingPolicies] = useState(true);
   const [policyError, setPolicyError] = useState("");
-  const [selectedPolicy, setSelectedPolicy] = useState(null);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -462,13 +99,8 @@ function Portal() {
 
   const hasPolicies = useMemo(() => policies.length > 0, [policies]);
 
-  const handlePolicyChange = (updatedPolicy) => {
-    setSelectedPolicy(updatedPolicy);
-    setPolicies((currentPolicies) =>
-      currentPolicies.map((policy) =>
-        policy.policyType === updatedPolicy.policyType && policy.policyId === updatedPolicy.policyId ? updatedPolicy : policy,
-      ),
-    );
+  const openPolicy = (policy) => {
+    navigate(`/portal/policies/${policy.policyType}/${policy.policyId}`);
   };
 
   const handleLogout = () => {
@@ -482,7 +114,7 @@ function Portal() {
           <h1>Welcome, {policyholder.name}</h1>
           <p>Member ID: {policyholder.memberId}</p>
         </div>
-        <button className="portal-logout" onClick={handleLogout}>
+        <button className="portal-logout" type="button" onClick={handleLogout}>
           Logout
         </button>
       </header>
@@ -496,7 +128,7 @@ function Portal() {
         ) : hasPolicies ? (
           <div className="policies-grid">
             {policies.map((policy) => (
-              <PolicyCard key={`${policy.policyType}-${policy.policyId}`} policy={policy} onSelect={setSelectedPolicy} />
+              <PolicyCard key={`${policy.policyType}-${policy.policyId}`} policy={policy} onSelect={openPolicy} />
             ))}
           </div>
         ) : (
@@ -505,7 +137,12 @@ function Portal() {
       </section>
 
       <section className="claims-section">
-        <h2 className="section-title">Recent Claims</h2>
+        <div className="section-header">
+          <h2 className="section-title">Recent Claims</h2>
+          <button className="claim-button" type="button" disabled title="Coming soon">
+            Start a new claim
+          </button>
+        </div>
         <div className="claims-table-wrapper">
           <table className="claims-table">
             <thead>
@@ -537,8 +174,6 @@ function Portal() {
           </table>
         </div>
       </section>
-
-      <PolicyModal policy={selectedPolicy} onClose={() => setSelectedPolicy(null)} onPolicyChange={handlePolicyChange} />
 
       <footer className="portal-footer">Ziggy Insurance ★ Policyholder Portal ★ v1.0</footer>
     </div>

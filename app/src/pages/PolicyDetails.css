@@ -1,0 +1,34 @@
+/* Policy details page styles */
+/* Page-level layout for the single-policy view; reuses modal/form classes from Portal.css */
+
+/* Back-to-dashboard nav, pinned to the upper-left above the policy header */
+.details-back {
+  margin-bottom: 16px;
+}
+
+.back-link {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 10px;
+  color: var(--text-muted);
+  background: transparent;
+  border: none;
+  padding: 4px 0;
+  cursor: pointer;
+  transition: color 0.1s;
+}
+
+.back-link:hover {
+  color: var(--purple-glow);
+}
+
+/* Details panel wraps the DetailRows list in a bordered card */
+.policy-details-panel {
+  border: 3px solid var(--border-pixel);
+  background: var(--bg-panel);
+  box-shadow: 4px 4px 0 var(--purple-dim);
+  padding: 24px;
+  margin-bottom: 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}

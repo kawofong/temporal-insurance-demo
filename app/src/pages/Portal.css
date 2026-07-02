@@ -49,6 +49,36 @@
   border-color: var(--purple-light);
 }
 
+/* Header action cluster shared by the dashboard and details page */
+.portal-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+/* Disabled placeholder "Start a new claim" button (shared by both pages) */
+.claim-button {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 10px;
+  color: var(--purple-glow);
+  background: transparent;
+  border: 2px solid var(--purple-light);
+  padding: 12px 20px;
+  cursor: pointer;
+  transition: all 0.1s;
+}
+
+.claim-button:hover:not(:disabled) {
+  color: var(--text-primary);
+  box-shadow: 3px 3px 0 var(--purple-dim);
+}
+
+.claim-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
+}
+
 /* Section headers */
 .section-title {
   font-size: 14px;
@@ -58,6 +88,20 @@
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+/* Section header row: title alongside an action (e.g. Start a new claim) */
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+
+.section-header .section-title {
+  margin-bottom: 0;
 }
 
 .section-title::before {
