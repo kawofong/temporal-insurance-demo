@@ -4,6 +4,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { policyholder, recentClaims } from "../data/mockData";
+import AdminPanel from "./AdminPanel";
 import {
   POLICY_ENDPOINT,
   formatStatus,
@@ -176,6 +177,8 @@ function Portal() {
       </section>
 
       <footer className="portal-footer">Ziggy Insurance ★ Policyholder Portal ★ v1.0</footer>
+
+      <AdminPanel />
     </div>
   );
 }

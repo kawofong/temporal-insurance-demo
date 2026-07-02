@@ -3,6 +3,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import AdminPanel from "./AdminPanel";
 import {
   ADD_ACTIONS,
   POLICY_ENDPOINT,
@@ -320,6 +321,8 @@ function PolicyDetails() {
       )}
 
       <footer className="portal-footer">Ziggy Insurance ★ Policyholder Portal ★ v1.0</footer>
+
+      <AdminPanel />
     </div>
   );
 }

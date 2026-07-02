@@ -1,0 +1,167 @@
+/* Adjuster admin simulator styles */
+/* Floating action button + large tabbed modal in the retro 16-bit theme */
+
+.admin-fab {
+  position: fixed;
+  right: 28px;
+  bottom: 28px;
+  z-index: 50;
+  width: 60px;
+  height: 60px;
+  font-size: 26px;
+  cursor: pointer;
+  background: var(--purple-primary);
+  color: var(--text-primary);
+  border: 3px solid var(--purple-light);
+  box-shadow: 4px 4px 0 var(--purple-dim);
+  transition: all 0.1s;
+}
+
+.admin-fab:hover {
+  background: var(--purple-light);
+  transform: translate(-2px, -2px);
+  box-shadow: 6px 6px 0 var(--purple-dim);
+}
+
+/* Pressed state: the button sinks into its shadow for a tactile click */
+.admin-fab:active {
+  transform: translate(2px, 2px);
+  box-shadow: 1px 1px 0 var(--purple-dim);
+}
+
+.admin-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(5, 4, 20, 0.78);
+}
+
+.admin-modal {
+  width: min(1000px, 94vw);
+  height: min(680px, 88vh);
+  display: flex;
+  flex-direction: column;
+  border: 3px solid var(--border-pixel);
+  background: var(--bg-panel);
+  box-shadow: 6px 6px 0 var(--purple-dim);
+}
+
+.admin-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 24px;
+  border-bottom: 2px dashed var(--border-pixel);
+}
+
+.admin-modal-header h2 {
+  font-size: 15px;
+  color: var(--purple-glow);
+  text-shadow: 2px 2px 0 var(--purple-dim);
+}
+
+.admin-modal-close {
+  border: 2px solid var(--border-pixel);
+  background: transparent;
+  color: var(--text-primary);
+  cursor: pointer;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 18px;
+  height: 40px;
+  width: 40px;
+}
+
+/* Body splits into a left tab rail and the active interface */
+.admin-modal-body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+.admin-tabs {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 220px;
+  padding: 20px;
+  border-right: 2px dashed var(--border-pixel);
+  background: var(--bg-card);
+}
+
+.admin-tab {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-align: left;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 10px;
+  line-height: 1.5;
+  color: var(--text-muted);
+  background: transparent;
+  border: 2px solid var(--border-pixel);
+  padding: 14px 12px;
+  cursor: pointer;
+  transition: all 0.1s;
+}
+
+.admin-tab:hover {
+  color: var(--text-primary);
+  border-color: var(--purple-light);
+}
+
+.admin-tab--active {
+  color: var(--purple-glow);
+  border-color: var(--purple-light);
+  box-shadow: 3px 3px 0 var(--purple-dim);
+}
+
+.admin-tab-icon {
+  font-size: 14px;
+}
+
+.admin-tab-content {
+  flex: 1;
+  padding: 28px;
+  overflow-y: auto;
+}
+
+.admin-tab-panel h3 {
+  font-size: 14px;
+  color: var(--purple-glow);
+  margin-bottom: 16px;
+}
+
+.admin-tab-panel p {
+  font-size: 10px;
+  line-height: 1.8;
+  color: var(--text-muted);
+  margin-bottom: 20px;
+}
+
+.admin-placeholder {
+  border: 2px dashed var(--border-pixel);
+  background: var(--bg-card);
+  color: var(--text-muted);
+  font-size: 10px;
+  line-height: 1.8;
+  padding: 40px;
+  text-align: center;
+}
+
+/* Stack the tab rail on top of the content on narrow screens */
+@media (max-width: 640px) {
+  .admin-modal-body {
+    flex-direction: column;
+  }
+
+  .admin-tabs {
+    width: auto;
+    flex-direction: row;
+    border-right: none;
+    border-bottom: 2px dashed var(--border-pixel);
+  }
+}
