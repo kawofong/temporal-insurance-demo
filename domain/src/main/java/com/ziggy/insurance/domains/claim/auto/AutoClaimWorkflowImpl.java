@@ -50,7 +50,7 @@ public class AutoClaimWorkflowImpl implements AutoClaimWorkflow {
         if (!coverage.covered()) {
             state.setRejectionReason(coverage.rejectionReason());
             state.setClosedAt(Workflow.currentTimeMillis());
-            updateStatus(ClaimStatus.CLOSED);
+            updateStatus(ClaimStatus.REJECTED);
             return this.state;
         }
 
@@ -60,17 +60,16 @@ public class AutoClaimWorkflowImpl implements AutoClaimWorkflow {
 
         String adjusterId = activities.assignAdjuster(state.getClaimId());
         state.setAssignedAdjusterId(adjusterId);
-        updateStatus(ClaimStatus.UNDER_REVIEW);
 
         activities.dispatchFieldAdjuster(state.getClaimId(), adjusterId);
 
         // Durable wait: the field adjuster submits their assessment via a Signal.
+        updateStatus(ClaimStatus.PENDING_DAMAGE_ASSESSMENT);
         Workflow.await(() -> damageAssessed);
-        updateStatus(ClaimStatus.PENDING_APPROVAL);
 
         // Durable wait: the claim can sit here for minutes or days holding no resources.
+        updateStatus(ClaimStatus.PENDING_APPROVAL);
         Workflow.await(() -> adjusterApproved);
-        updateStatus(ClaimStatus.APPROVED);
 
         updateStatus(ClaimStatus.PAYMENT_PROCESSING);
         String paymentRef = activities.processPayment(

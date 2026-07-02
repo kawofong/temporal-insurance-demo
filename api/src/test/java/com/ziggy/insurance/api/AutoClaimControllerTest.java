@@ -173,8 +173,9 @@ class AutoClaimControllerTest {
     @Test
     @Order(5)
     void approveClaimTransitionsToApprovedThenClosed() throws Exception {
-        // The field adjuster submits their assessment (Signal) so the claim leaves UNDER_REVIEW.
-        awaitStatus(claimId, "UNDER_REVIEW");
+        // The field adjuster submits their assessment (Signal) so the claim leaves
+        // PENDING_DAMAGE_ASSESSMENT for PENDING_APPROVAL.
+        awaitStatus(claimId, "PENDING_DAMAGE_ASSESSMENT");
         mockMvc.perform(post(BASE_URL + "/" + claimId + "/damage-assessment")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""

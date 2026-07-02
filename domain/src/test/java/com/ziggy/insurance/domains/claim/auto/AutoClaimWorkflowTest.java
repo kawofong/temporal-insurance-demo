@@ -71,8 +71,8 @@ class AutoClaimWorkflowTest {
             WorkflowClient.start(wf::run, testInput("CLM-HAPPY-001", "1HGFE2F59NH000001"));
 
             // The field adjuster submits their assessment via Signal; only then does the
-            // claim advance from UNDER_REVIEW to PENDING_APPROVAL.
-            awaitStatus(wf, ClaimStatus.UNDER_REVIEW);
+            // claim advance from PENDING_DAMAGE_ASSESSMENT to PENDING_APPROVAL.
+            awaitStatus(wf, ClaimStatus.PENDING_DAMAGE_ASSESSMENT);
             wf.submitDamageAssessment(new DamageAssessmentResult(
                 "Moderate front-end collision damage.", 4200));
 
@@ -94,7 +94,7 @@ class AutoClaimWorkflowTest {
     }
 
     @Test
-    void coverageDeniedClosesWithRejectionReason() {
+    void coverageDeniedRejectsWithReason() {
         try (TestWorkflowEnvironment env = TestWorkflowEnvironment.newInstance()) {
             registerSearchAttributes(env);
             Worker worker = env.newWorker(TaskQueues.CLAIM_TASK_QUEUE);
@@ -106,8 +106,8 @@ class AutoClaimWorkflowTest {
                 AutoClaimWorkflow.class, workflowOptions("claim/auto/test-denied"));
             WorkflowClient.start(wf::run, testInput("CLM-DENY-001", null));
 
-            AutoClaimState closed = awaitStatus(wf, ClaimStatus.CLOSED);
-            assertThat(closed.getRejectionReason()).isEqualTo("No vehicle VIN on the claim");
+            AutoClaimState rejected = awaitStatus(wf, ClaimStatus.REJECTED);
+            assertThat(rejected.getRejectionReason()).isEqualTo("No vehicle VIN on the claim");
         }
     }
 
