@@ -12,3 +12,4 @@ spring:
         - com.ziggy.insurance.domains
     workers:
       - task-queue: policy-task-queue
+      - task-queue: claim-task-queue
