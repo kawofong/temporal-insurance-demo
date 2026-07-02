@@ -52,6 +52,7 @@ class AutoClaimControllerTest {
             testEnv = TestWorkflowEnvironment.newInstance();
             testEnv.registerSearchAttribute(ClaimSearchAttributes.POLICY_ID, IndexedValueType.INDEXED_VALUE_TYPE_KEYWORD);
             testEnv.registerSearchAttribute(ClaimSearchAttributes.POLICY_HOLDER_ID, IndexedValueType.INDEXED_VALUE_TYPE_KEYWORD);
+            testEnv.registerSearchAttribute(ClaimSearchAttributes.CLAIM_STATUS, IndexedValueType.INDEXED_VALUE_TYPE_KEYWORD);
             Worker worker = testEnv.newWorker(TaskQueues.CLAIM_TASK_QUEUE);
             worker.registerWorkflowImplementationTypes(AutoClaimWorkflowImpl.class);
             worker.registerActivitiesImplementations(new AutoClaimActivitiesImpl());

@@ -104,6 +104,7 @@ public class AutoClaimWorkflowImpl implements AutoClaimWorkflow {
     // Advances the claim to a new status and emails the policyholder about the change.
     private void updateStatus(ClaimStatus status) {
         state.setStatus(status);
+        ClaimSearchAttributes.upsertClaimStatus(status);
         activities.sendEmailNotification(
             state.getPolicyHolderId(),
             state.getClaimId(),
