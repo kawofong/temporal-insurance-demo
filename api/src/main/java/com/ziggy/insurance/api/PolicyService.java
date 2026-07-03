@@ -47,7 +47,7 @@ public class PolicyService {
     // Generates a system-assigned identifier for a policy line item (driver, loss
     // payee, additional insured). Callers no longer need to supply these ids.
     private static String generateEntityId(String prefix) {
-        return prefix + "-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+        return (prefix + "-" + UUID.randomUUID().toString().substring(0, 8)).toLowerCase();
     }
 
     private static boolean hasText(String value) {

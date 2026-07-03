@@ -18,7 +18,7 @@ const TABS = [
   { id: "adjuster", label: "Claims Adjuster", icon: "✅" },
 ];
 
-const DEMO_ADJUSTER_ID = "ADJ-SARAH";
+const DEMO_ADJUSTER_ID = "adj-sarah";
 
 function useClaimQueue(status) {
   const [claims, setClaims] = useState([]);

@@ -36,7 +36,7 @@ public class ClaimService {
     }
 
     private static String generateClaimId() {
-        return "CLM-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+        return "clm-" + UUID.randomUUID().toString().substring(0, 8).toLowerCase();
     }
 
     private static boolean hasText(String value) {

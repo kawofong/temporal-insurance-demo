@@ -130,7 +130,7 @@ describe("claimHelpers fetch client", () => {
     global.fetch.mockResolvedValue(jsonResponse({}, true, 202));
 
     await approveClaim("CLM-ABC", {
-      adjusterId: "ADJ-SARAH",
+      adjusterId: "adj-sarah",
       approvedPayoutAmount: 1200,
       notes: "Looks good",
     });
@@ -139,7 +139,7 @@ describe("claimHelpers fetch client", () => {
       `${CLAIM_ENDPOINT}/CLM-ABC/approve`,
       expect.objectContaining({
         method: "POST",
-        body: JSON.stringify({ adjusterId: "ADJ-SARAH", approvedPayoutAmount: 1200, notes: "Looks good" }),
+        body: JSON.stringify({ adjusterId: "adj-sarah", approvedPayoutAmount: 1200, notes: "Looks good" }),
       }),
     );
   });
