@@ -6,11 +6,13 @@ import { useNavigate, useParams } from "react-router-dom";
 import AdminPanel from "./AdminPanel";
 import {
   CLAIM_LIFECYCLE_STEPS,
+  CLAIM_POLL_INTERVAL_MS,
   claimStatusClass,
   fetchClaim,
   formatClaimStatus,
   formatCurrency,
   formatDate,
+  isTerminalClaimStatus,
 } from "./claimHelpers";
 import "./Portal.css";
 import "./PolicyDetails.css";
@@ -74,19 +76,21 @@ function ClaimDetails() {
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
 
+  // silent refreshes (background polling) keep the last good data on screen and never toggle
+  // the loading placeholder or surface a transient error, so the page doesn't flicker.
   const loadClaim = useCallback(
-    async (signal) => {
-      setIsLoading(true);
+    async (signal, { silent = false } = {}) => {
+      if (!silent) setIsLoading(true);
       try {
         const data = await fetchClaim(claimId, signal ? { signal } : undefined);
         setClaim(data);
         setLoadError("");
       } catch (error) {
-        if (error.name !== "AbortError") {
+        if (error.name !== "AbortError" && !silent) {
           setLoadError(error.message || "Unable to load this claim.");
         }
       } finally {
-        if (!signal || !signal.aborted) setIsLoading(false);
+        if (!silent && (!signal || !signal.aborted)) setIsLoading(false);
       }
     },
     [claimId],
@@ -97,6 +101,23 @@ function ClaimDetails() {
     loadClaim(controller.signal);
     return () => controller.abort();
   }, [loadClaim]);
+
+  // Auto-refresh every few seconds so lifecycle progress (coverage, damage assessment, approval,
+  // payment) appears without a manual reload. Depends on status (a primitive) rather than the
+  // whole claim object so the interval is rebuilt only when the status changes, and it stops
+  // once the workflow reaches a terminal state.
+  const status = claim?.status;
+  useEffect(() => {
+    if (!status || isTerminalClaimStatus(status)) return undefined;
+    const controller = new AbortController();
+    const intervalId = setInterval(() => {
+      loadClaim(controller.signal, { silent: true });
+    }, CLAIM_POLL_INTERVAL_MS);
+    return () => {
+      clearInterval(intervalId);
+      controller.abort();
+    };
+  }, [status, loadClaim]);
 
   return (
     <div className="portal-page">

@@ -5,6 +5,8 @@ import { formatDate, readApiError } from "./policyHelpers";
 
 export const CLAIM_ENDPOINT = "/api/v1/claims/auto";
 export const SIGNAL_REFRESH_DELAY_MS = 900;
+// How often the claim details page re-queries the workflow so lifecycle progress appears live.
+export const CLAIM_POLL_INTERVAL_MS = 3000;
 
 export { readApiError, formatDate };
 
@@ -40,6 +42,11 @@ export function formatClaimStatus(status) {
 
 export function claimStatusClass(status) {
   return CLAIM_STATUS_MAP[status]?.cssClass || "in-review";
+}
+
+// True once the workflow has completed (CLOSED or REJECTED); callers use this to stop polling.
+export function isTerminalClaimStatus(status) {
+  return CLAIM_STATUS_MAP[status]?.bucket === "terminal";
 }
 
 export function formatCurrency(value) {

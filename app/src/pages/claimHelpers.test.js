@@ -6,6 +6,7 @@ import {
   fetchClaim,
   formatClaimStatus,
   formatCurrency,
+  isTerminalClaimStatus,
   listClaims,
   submitDamageAssessment,
   submitFnol,
@@ -38,6 +39,15 @@ describe("status mapping", () => {
     expect(claimStatusClass("PAYMENT_PROCESSING")).toBe("approved");
     expect(claimStatusClass("CLOSED")).toBe("paid");
     expect(claimStatusClass("REJECTED")).toBe("denied");
+  });
+
+  it("treats only CLOSED and REJECTED as terminal", () => {
+    expect(isTerminalClaimStatus("CLOSED")).toBe(true);
+    expect(isTerminalClaimStatus("REJECTED")).toBe(true);
+    expect(isTerminalClaimStatus("SUBMITTED")).toBe(false);
+    expect(isTerminalClaimStatus("PAYMENT_PROCESSING")).toBe(false);
+    expect(isTerminalClaimStatus("SOMETHING_NEW")).toBe(false);
+    expect(isTerminalClaimStatus(undefined)).toBe(false);
   });
 });
 

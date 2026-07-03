@@ -72,6 +72,38 @@ function ClaimQueueList({ isLoading, error, claims, renderItem }) {
   );
 }
 
+// Centered popup that holds a claim action form, stacked above the admin panel so an adjuster
+// can act on a claim without scrolling past a long queue. Closes on backdrop click, ×, or Escape.
+function ClaimActionModal({ title, onClose, children }) {
+  useEffect(() => {
+    function onKeyDown(event) {
+      if (event.key === "Escape") onClose();
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [onClose]);
+
+  return (
+    <div className="admin-action-backdrop" role="presentation" onClick={onClose}>
+      <section
+        className="admin-action-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="admin-action-header">
+          <h4>{title}</h4>
+          <button className="admin-modal-close" type="button" onClick={onClose} aria-label="Close form">
+            ×
+          </button>
+        </div>
+        {children}
+      </section>
+    </div>
+  );
+}
+
 function FieldAdjusterPanel() {
   const { claims, isLoading, error, refresh } = useClaimQueue("PENDING_DAMAGE_ASSESSMENT");
   const [selectedClaimId, setSelectedClaimId] = useState(null);
@@ -142,32 +174,38 @@ function FieldAdjusterPanel() {
       />
 
       {selectedClaimId && (
-        <form className="policy-action-form" onSubmit={submitAssessment}>
-          <h4>Damage Assessment — {selectedClaimId}</h4>
-          <label>
-            Summary
-            <textarea value={summary} onChange={(event) => setSummary(event.target.value)} required />
-          </label>
-          <label>
-            Estimated Cost
-            <input
-              type="number"
-              min="0"
-              value={estimatedCost}
-              onChange={(event) => setEstimatedCost(event.target.value)}
-              required
-            />
-          </label>
-          {formError && <div className="policy-modal-notice policy-modal-notice--error">{formError}</div>}
-          <div className="policy-form-actions">
-            <button className="policy-form-keep" type="button" onClick={() => setSelectedClaimId(null)} disabled={isBusy}>
-              Cancel
-            </button>
-            <button type="submit" disabled={isBusy}>
-              {isBusy ? "Submitting..." : "Submit Assessment"}
-            </button>
-          </div>
-        </form>
+        <ClaimActionModal title={`Damage Assessment — ${selectedClaimId}`} onClose={() => setSelectedClaimId(null)}>
+          <form className="policy-action-form" onSubmit={submitAssessment}>
+            <label>
+              Summary
+              <textarea value={summary} onChange={(event) => setSummary(event.target.value)} required />
+            </label>
+            <label>
+              Estimated Cost
+              <input
+                type="number"
+                min="0"
+                value={estimatedCost}
+                onChange={(event) => setEstimatedCost(event.target.value)}
+                required
+              />
+            </label>
+            {formError && <div className="policy-modal-notice policy-modal-notice--error">{formError}</div>}
+            <div className="policy-form-actions">
+              <button
+                className="policy-form-keep"
+                type="button"
+                onClick={() => setSelectedClaimId(null)}
+                disabled={isBusy}
+              >
+                Cancel
+              </button>
+              <button type="submit" disabled={isBusy}>
+                {isBusy ? "Submitting..." : "Submit Assessment"}
+              </button>
+            </div>
+          </form>
+        </ClaimActionModal>
       )}
     </div>
   );
@@ -244,36 +282,42 @@ function AdjusterPanel() {
       />
 
       {selectedClaim && (
-        <form className="policy-action-form" onSubmit={submitApproval}>
-          <h4>Approve Payout — {selectedClaim.claimId}</h4>
-          <label>
-            Approved Payout Amount
-            <input
-              type="number"
-              min="0"
-              value={approvedPayoutAmount}
-              onChange={(event) => setApprovedPayoutAmount(event.target.value)}
-              required
-            />
-          </label>
-          <label>
-            Notes
-            <textarea value={notes} onChange={(event) => setNotes(event.target.value)} />
-          </label>
-          <label>
-            Adjuster ID
-            <input type="text" value={adjusterId} onChange={(event) => setAdjusterId(event.target.value)} required />
-          </label>
-          {formError && <div className="policy-modal-notice policy-modal-notice--error">{formError}</div>}
-          <div className="policy-form-actions">
-            <button className="policy-form-keep" type="button" onClick={() => setSelectedClaim(null)} disabled={isBusy}>
-              Cancel
-            </button>
-            <button type="submit" disabled={isBusy}>
-              {isBusy ? "Submitting..." : "Approve Payout"}
-            </button>
-          </div>
-        </form>
+        <ClaimActionModal title={`Approve Payout — ${selectedClaim.claimId}`} onClose={() => setSelectedClaim(null)}>
+          <form className="policy-action-form" onSubmit={submitApproval}>
+            <label>
+              Approved Payout Amount
+              <input
+                type="number"
+                min="0"
+                value={approvedPayoutAmount}
+                onChange={(event) => setApprovedPayoutAmount(event.target.value)}
+                required
+              />
+            </label>
+            <label>
+              Notes
+              <textarea value={notes} onChange={(event) => setNotes(event.target.value)} />
+            </label>
+            <label>
+              Adjuster ID
+              <input type="text" value={adjusterId} onChange={(event) => setAdjusterId(event.target.value)} required />
+            </label>
+            {formError && <div className="policy-modal-notice policy-modal-notice--error">{formError}</div>}
+            <div className="policy-form-actions">
+              <button
+                className="policy-form-keep"
+                type="button"
+                onClick={() => setSelectedClaim(null)}
+                disabled={isBusy}
+              >
+                Cancel
+              </button>
+              <button type="submit" disabled={isBusy}>
+                {isBusy ? "Submitting..." : "Approve Payout"}
+              </button>
+            </div>
+          </form>
+        </ClaimActionModal>
       )}
     </div>
   );
