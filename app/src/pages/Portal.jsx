@@ -3,8 +3,15 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { policyholder, recentClaims } from "../data/mockData";
+import { policyholder } from "../data/mockData";
 import AdminPanel from "./AdminPanel";
+import {
+  claimStatusClass,
+  formatClaimStatus,
+  formatCurrency,
+  formatDate,
+  listClaims,
+} from "./claimHelpers";
 import {
   POLICY_ENDPOINT,
   formatStatus,
@@ -16,14 +23,12 @@ import {
 } from "./policyHelpers";
 import "./Portal.css";
 
-function getStatusClass(status) {
-  const map = {
-    Approved: "approved",
-    Paid: "paid",
-    "In Review": "in-review",
-    Denied: "denied",
-  };
-  return map[status] || "in-review";
+// Gate on the correlated adjuster/assessment fields (rather than the amount itself) so a
+// legitimate $0 payout or estimate still displays instead of being mistaken for "not set".
+function claimAmount(claim) {
+  if (claim.approvedByAdjusterId) return formatCurrency(claim.approvedPayoutAmount);
+  if (claim.damageAssessment) return formatCurrency(claim.estimatedRepairCost);
+  return "—";
 }
 
 function normalizePolicies(response) {
@@ -73,6 +78,10 @@ function Portal() {
   const [isLoadingPolicies, setIsLoadingPolicies] = useState(true);
   const [policyError, setPolicyError] = useState("");
 
+  const [claims, setClaims] = useState([]);
+  const [isLoadingClaims, setIsLoadingClaims] = useState(true);
+  const [claimsError, setClaimsError] = useState("");
+
   useEffect(() => {
     const controller = new AbortController();
 
@@ -98,7 +107,33 @@ function Portal() {
     return () => controller.abort();
   }, []);
 
+  useEffect(() => {
+    const controller = new AbortController();
+
+    async function loadClaims() {
+      try {
+        const results = await listClaims({ policyHolderId: policyholder.memberId }, { signal: controller.signal });
+        setClaims([...results].sort((a, b) => (b.incidentDate || 0) - (a.incidentDate || 0)));
+        setClaimsError("");
+      } catch (error) {
+        if (error.name !== "AbortError") {
+          setClaimsError("Unable to load claims right now.");
+        }
+      } finally {
+        if (!controller.signal.aborted) setIsLoadingClaims(false);
+      }
+    }
+
+    loadClaims();
+    return () => controller.abort();
+  }, []);
+
   const hasPolicies = useMemo(() => policies.length > 0, [policies]);
+  const hasClaims = useMemo(() => claims.length > 0, [claims]);
+
+  const openClaim = (claim) => {
+    navigate(`/portal/claims/${claim.claimId}`);
+  };
 
   const openPolicy = (policy) => {
     navigate(`/portal/policies/${policy.policyType}/${policy.policyId}`);
@@ -140,40 +175,45 @@ function Portal() {
       <section className="claims-section">
         <div className="section-header">
           <h2 className="section-title">Recent Claims</h2>
-          <button className="claim-button" type="button" disabled title="Coming soon">
-            Start a new claim
-          </button>
         </div>
-        <div className="claims-table-wrapper">
-          <table className="claims-table">
-            <thead>
-              <tr>
-                <th>Claim ID</th>
-                <th>Type</th>
-                <th>Date</th>
-                <th>Description</th>
-                <th>Amount</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {recentClaims.map((claim) => (
-                <tr key={claim.id}>
-                  <td>{claim.id}</td>
-                  <td>{claim.type}</td>
-                  <td>{claim.date}</td>
-                  <td>{claim.description}</td>
-                  <td>{claim.amount}</td>
-                  <td>
-                    <span className={`claim-status claim-status--${getStatusClass(claim.status)}`}>
-                      {claim.status}
-                    </span>
-                  </td>
+        {isLoadingClaims ? (
+          <div className="policies-placeholder">Loading claims...</div>
+        ) : claimsError ? (
+          <div className="policies-placeholder policies-placeholder--error">{claimsError}</div>
+        ) : hasClaims ? (
+          <div className="claims-table-wrapper">
+            <table className="claims-table">
+              <thead>
+                <tr>
+                  <th>Claim ID</th>
+                  <th>Type</th>
+                  <th>Date</th>
+                  <th>Description</th>
+                  <th>Amount</th>
+                  <th>Status</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {claims.map((claim) => (
+                  <tr key={claim.claimId} className="claims-row-link" onClick={() => openClaim(claim)}>
+                    <td>{claim.claimId}</td>
+                    <td>Auto</td>
+                    <td>{formatDate(claim.incidentDate)}</td>
+                    <td>{claim.incidentDescription}</td>
+                    <td>{claimAmount(claim)}</td>
+                    <td>
+                      <span className={`claim-status claim-status--${claimStatusClass(claim.status)}`}>
+                        {formatClaimStatus(claim.status)}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="policies-placeholder">You have no claims yet.</div>
+        )}
       </section>
 
       <footer className="portal-footer">Ziggy Insurance ★ Policyholder Portal ★ v1.0</footer>

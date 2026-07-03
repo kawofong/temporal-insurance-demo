@@ -82,14 +82,14 @@ class AutoClaimWorkflowTest {
             assertThat(pending.getAssignedAdjusterId()).isNotBlank();
             assertThat(pending.getDamageAssessment()).isNotBlank();
 
-            wf.adjusterApproval(new AdjusterApprovalRequest("ADJ-SARAH", 4200, "Approved after review"));
+            wf.adjusterApproval(new AdjusterApprovalRequest("adj-sarah", 4200, "Approved after review"));
 
             // Block on completion so the time-skipping test server fast-forwards through the
             // payment retry backoff instead of waiting in real time.
             AutoClaimState closed = WorkflowStub.fromTyped(wf).getResult(AutoClaimState.class);
-            assertThat(closed.getApprovedByAdjusterId()).isEqualTo("ADJ-SARAH");
+            assertThat(closed.getApprovedByAdjusterId()).isEqualTo("adj-sarah");
             assertThat(closed.getApprovedPayoutAmount()).isEqualTo(4200);
-            assertThat(closed.getPaymentReference()).isEqualTo("PAY-CLM-HAPPY-001");
+            assertThat(closed.getPaymentReference()).isEqualTo("pay-CLM-HAPPY-001");
             assertThat(closed.getRejectionReason()).isNull();
         }
     }

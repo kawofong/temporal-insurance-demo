@@ -251,6 +251,10 @@
   background: rgba(124, 58, 237, 0.08);
 }
 
+.claims-row-link {
+  cursor: pointer;
+}
+
 .claim-status {
   display: inline-block;
   padding: 4px 10px;

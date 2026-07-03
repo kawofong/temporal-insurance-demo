@@ -2,7 +2,15 @@
 /* Floating action button that opens a large left-tabbed modal to simulate the
    field adjuster and claims adjuster applications acting on claims. */
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import {
+  SIGNAL_REFRESH_DELAY_MS,
+  approveClaim,
+  formatCurrency,
+  listClaims,
+  submitDamageAssessment,
+} from "./claimHelpers";
+import "./Portal.css";
 import "./AdminPanel.css";
 
 const TABS = [
@@ -10,7 +18,128 @@ const TABS = [
   { id: "adjuster", label: "Claims Adjuster", icon: "✅" },
 ];
 
+const DEMO_ADJUSTER_ID = "adj-sarah";
+
+function useClaimQueue(status) {
+  const [claims, setClaims] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [refreshToken, setRefreshToken] = useState(0);
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    async function loadQueue() {
+      setIsLoading(true);
+      try {
+        const results = await listClaims({ status }, { signal: controller.signal });
+        setClaims(results);
+        setError("");
+      } catch (queueError) {
+        if (queueError.name !== "AbortError") {
+          setError(queueError.message || "Unable to load the queue.");
+        }
+      } finally {
+        if (!controller.signal.aborted) setIsLoading(false);
+      }
+    }
+
+    loadQueue();
+    return () => controller.abort();
+  }, [status, refreshToken]);
+
+  function refresh() {
+    setRefreshToken((token) => token + 1);
+  }
+
+  return { claims, isLoading, error, refresh };
+}
+
+// Shared loading/error/empty/list rendering for both adjuster queues.
+function ClaimQueueList({ isLoading, error, claims, renderItem }) {
+  if (isLoading) return <div className="admin-placeholder">Loading queue...</div>;
+  if (error) return <div className="admin-placeholder">{error}</div>;
+  if (claims.length === 0) return <div className="admin-placeholder">No claims waiting.</div>;
+
+  return (
+    <ul className="admin-queue">
+      {claims.map((claim) => (
+        <li className="admin-queue-item" key={claim.claimId}>
+          {renderItem(claim)}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+// Centered popup that holds a claim action form, stacked above the admin panel so an adjuster
+// can act on a claim without scrolling past a long queue. Closes on backdrop click, ×, or Escape.
+function ClaimActionModal({ title, onClose, children }) {
+  useEffect(() => {
+    function onKeyDown(event) {
+      if (event.key === "Escape") onClose();
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [onClose]);
+
+  return (
+    <div className="admin-action-backdrop" role="presentation" onClick={onClose}>
+      <section
+        className="admin-action-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="admin-action-header">
+          <h4>{title}</h4>
+          <button className="admin-modal-close" type="button" onClick={onClose} aria-label="Close form">
+            ×
+          </button>
+        </div>
+        {children}
+      </section>
+    </div>
+  );
+}
+
 function FieldAdjusterPanel() {
+  const { claims, isLoading, error, refresh } = useClaimQueue("PENDING_DAMAGE_ASSESSMENT");
+  const [selectedClaimId, setSelectedClaimId] = useState(null);
+  const [summary, setSummary] = useState("");
+  const [estimatedCost, setEstimatedCost] = useState("");
+  const [isBusy, setIsBusy] = useState(false);
+  const [notice, setNotice] = useState("");
+  const [formError, setFormError] = useState("");
+
+  function selectClaim(claim) {
+    setSelectedClaimId(claim.claimId);
+    setSummary("");
+    setEstimatedCost("");
+    setNotice("");
+    setFormError("");
+  }
+
+  async function submitAssessment(event) {
+    event.preventDefault();
+    setIsBusy(true);
+    setFormError("");
+    try {
+      await submitDamageAssessment(selectedClaimId, {
+        summary,
+        estimatedCost: Number(estimatedCost) || 0,
+      });
+      setNotice(`Damage assessment submitted for ${selectedClaimId}.`);
+      setSelectedClaimId(null);
+      window.setTimeout(refresh, SIGNAL_REFRESH_DELAY_MS);
+    } catch (submitError) {
+      setFormError(submitError.message || "Unable to submit damage assessment.");
+    } finally {
+      setIsBusy(false);
+    }
+  }
+
   return (
     <div className="admin-tab-panel">
       <h3>🔧 Field Adjuster</h3>
@@ -18,12 +147,110 @@ function FieldAdjusterPanel() {
         Stand-in for the field adjuster application. Here an adjuster dispatched to the
         scene looks up a claim and submits their damage assessment back to the workflow.
       </p>
-      <div className="admin-placeholder">Damage assessment form coming soon.</div>
+
+      {notice && <div className="policy-modal-notice">{notice}</div>}
+
+      <ClaimQueueList
+        isLoading={isLoading}
+        error={error}
+        claims={claims}
+        renderItem={(claim) => (
+          <>
+            <div className="admin-queue-item-header">
+              <strong>{claim.claimId}</strong>
+              <button type="button" onClick={() => selectClaim(claim)}>
+                Assess Damage
+              </button>
+            </div>
+            <p>{claim.incidentDescription}</p>
+            <div className="admin-queue-item-meta">
+              <span>
+                {claim.vehicleYear} {claim.vehicleMake} {claim.vehicleModel}
+              </span>
+              <span>{claim.incidentLocation}</span>
+            </div>
+          </>
+        )}
+      />
+
+      {selectedClaimId && (
+        <ClaimActionModal title={`Damage Assessment — ${selectedClaimId}`} onClose={() => setSelectedClaimId(null)}>
+          <form className="policy-action-form" onSubmit={submitAssessment}>
+            <label>
+              Summary
+              <textarea value={summary} onChange={(event) => setSummary(event.target.value)} required />
+            </label>
+            <label>
+              Estimated Cost
+              <input
+                type="number"
+                min="0"
+                value={estimatedCost}
+                onChange={(event) => setEstimatedCost(event.target.value)}
+                required
+              />
+            </label>
+            {formError && <div className="policy-modal-notice policy-modal-notice--error">{formError}</div>}
+            <div className="policy-form-actions">
+              <button
+                className="policy-form-keep"
+                type="button"
+                onClick={() => setSelectedClaimId(null)}
+                disabled={isBusy}
+              >
+                Cancel
+              </button>
+              <button type="submit" disabled={isBusy}>
+                {isBusy ? "Submitting..." : "Submit Assessment"}
+              </button>
+            </div>
+          </form>
+        </ClaimActionModal>
+      )}
     </div>
   );
 }
 
 function AdjusterPanel() {
+  const { claims, isLoading, error, refresh } = useClaimQueue("PENDING_APPROVAL");
+  const [selectedClaim, setSelectedClaim] = useState(null);
+  const [approvedPayoutAmount, setApprovedPayoutAmount] = useState("");
+  const [notes, setNotes] = useState("");
+  const [adjusterId, setAdjusterId] = useState(DEMO_ADJUSTER_ID);
+  const [isBusy, setIsBusy] = useState(false);
+  const [notice, setNotice] = useState("");
+  const [formError, setFormError] = useState("");
+
+  function selectClaim(claim) {
+    setSelectedClaim(claim);
+    // Nullish coalescing (not ||) preserves a legitimate $0 estimated repair cost.
+    setApprovedPayoutAmount(claim.estimatedRepairCost ?? "");
+    setNotes("");
+    setAdjusterId(DEMO_ADJUSTER_ID);
+    setNotice("");
+    setFormError("");
+  }
+
+  async function submitApproval(event) {
+    event.preventDefault();
+    setIsBusy(true);
+    setFormError("");
+    try {
+      await approveClaim(selectedClaim.claimId, {
+        adjusterId,
+        approvedPayoutAmount: Number(approvedPayoutAmount) || 0,
+        notes,
+      });
+      setNotice(`Approval submitted for ${selectedClaim.claimId}.`);
+      setSelectedClaim(null);
+      window.setTimeout(refresh, SIGNAL_REFRESH_DELAY_MS);
+    } catch (submitError) {
+      setFormError(submitError.message || "Unable to submit approval.");
+    } finally {
+      setIsBusy(false);
+    }
+  }
+
   return (
     <div className="admin-tab-panel">
       <h3>✅ Claims Adjuster</h3>
@@ -31,7 +258,67 @@ function AdjusterPanel() {
         Stand-in for the claims adjuster console. Here an adjuster reviews an assessed
         claim and approves the payout to move it toward closure.
       </p>
-      <div className="admin-placeholder">Approval queue coming soon.</div>
+
+      {notice && <div className="policy-modal-notice">{notice}</div>}
+
+      <ClaimQueueList
+        isLoading={isLoading}
+        error={error}
+        claims={claims}
+        renderItem={(claim) => (
+          <>
+            <div className="admin-queue-item-header">
+              <strong>{claim.claimId}</strong>
+              <button type="button" onClick={() => selectClaim(claim)}>
+                Review
+              </button>
+            </div>
+            <p>{claim.damageAssessment}</p>
+            <div className="admin-queue-item-meta">
+              <span>Estimated: {formatCurrency(claim.estimatedRepairCost)}</span>
+            </div>
+          </>
+        )}
+      />
+
+      {selectedClaim && (
+        <ClaimActionModal title={`Approve Payout — ${selectedClaim.claimId}`} onClose={() => setSelectedClaim(null)}>
+          <form className="policy-action-form" onSubmit={submitApproval}>
+            <label>
+              Approved Payout Amount
+              <input
+                type="number"
+                min="0"
+                value={approvedPayoutAmount}
+                onChange={(event) => setApprovedPayoutAmount(event.target.value)}
+                required
+              />
+            </label>
+            <label>
+              Notes
+              <textarea value={notes} onChange={(event) => setNotes(event.target.value)} />
+            </label>
+            <label>
+              Adjuster ID
+              <input type="text" value={adjusterId} onChange={(event) => setAdjusterId(event.target.value)} required />
+            </label>
+            {formError && <div className="policy-modal-notice policy-modal-notice--error">{formError}</div>}
+            <div className="policy-form-actions">
+              <button
+                className="policy-form-keep"
+                type="button"
+                onClick={() => setSelectedClaim(null)}
+                disabled={isBusy}
+              >
+                Cancel
+              </button>
+              <button type="submit" disabled={isBusy}>
+                {isBusy ? "Submitting..." : "Approve Payout"}
+              </button>
+            </div>
+          </form>
+        </ClaimActionModal>
+      )}
     </div>
   );
 }

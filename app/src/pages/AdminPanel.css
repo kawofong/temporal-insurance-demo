@@ -152,6 +152,105 @@
   text-align: center;
 }
 
+.admin-queue {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  list-style: none;
+  margin: 0 0 20px;
+  padding: 0;
+}
+
+.admin-queue-item {
+  border: 2px solid var(--border-pixel);
+  background: var(--bg-card);
+  padding: 14px 16px;
+}
+
+.admin-queue-item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.admin-queue-item-header strong {
+  color: var(--purple-glow);
+  font-size: 10px;
+}
+
+.admin-queue-item-header button {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 9px;
+  color: var(--purple-glow);
+  background: transparent;
+  border: 2px solid var(--purple-light);
+  padding: 8px 12px;
+  cursor: pointer;
+}
+
+.admin-queue-item p {
+  font-size: 9px;
+  line-height: 1.7;
+  color: var(--text-primary);
+  margin: 0 0 10px;
+}
+
+.admin-queue-item-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  font-size: 9px;
+  color: var(--text-muted);
+}
+
+/* Claim action popup — a dialog stacked above the admin panel (z-index 70 > 60) so an
+   adjuster can act on a claim without scrolling through a long queue. */
+.admin-action-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(5, 4, 20, 0.82);
+}
+
+.admin-action-modal {
+  width: min(520px, 92vw);
+  max-height: 88vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  border: 3px solid var(--border-pixel);
+  background: var(--bg-panel);
+  box-shadow: 6px 6px 0 var(--purple-dim);
+  padding: 24px;
+}
+
+.admin-action-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.admin-action-header h4 {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--purple-glow);
+  text-shadow: 2px 2px 0 var(--purple-dim);
+}
+
+/* The form already carries the card frame; drop its inline top margin inside the popup. */
+.admin-action-modal .policy-action-form {
+  margin-top: 0;
+}
+
 /* Stack the tab rail on top of the content on narrow screens */
 @media (max-width: 640px) {
   .admin-modal-body {

@@ -14,31 +14,52 @@ class ClaimServiceQueryTest {
 
     @Test
     void queryWithoutFiltersScopesByClaimWorkflowType() {
-        assertThat(ClaimService.buildClaimListQuery(null, null)).isEqualTo(BASE_QUERY);
+        assertThat(ClaimService.buildClaimListQuery(null, null, null)).isEqualTo(BASE_QUERY);
     }
 
     @Test
     void blankFiltersAreTreatedAsNoFilter() {
-        assertThat(ClaimService.buildClaimListQuery("   ", "   ")).isEqualTo(BASE_QUERY);
+        assertThat(ClaimService.buildClaimListQuery("   ", "   ", "   ")).isEqualTo(BASE_QUERY);
     }
 
     @Test
     void queryWithHolderFiltersByPolicyHolderIdSearchAttribute() {
-        assertThat(ClaimService.buildClaimListQuery("PH-001", null))
+        assertThat(ClaimService.buildClaimListQuery("PH-001", null, null))
             .isEqualTo(BASE_QUERY + " AND policyHolderId = 'PH-001'");
     }
 
     @Test
     void queryWithPolicyIdFiltersByPolicyIdSearchAttribute() {
-        assertThat(ClaimService.buildClaimListQuery(null, "demo-auto-001"))
+        assertThat(ClaimService.buildClaimListQuery(null, "demo-auto-001", null))
             .isEqualTo(BASE_QUERY + " AND policyId = 'demo-auto-001'");
     }
 
     @Test
     void queryWithBothFiltersCombinesBothSearchAttributes() {
-        assertThat(ClaimService.buildClaimListQuery("PH-001", "demo-auto-001"))
+        assertThat(ClaimService.buildClaimListQuery("PH-001", "demo-auto-001", null))
             .isEqualTo(BASE_QUERY
                 + " AND policyHolderId = 'PH-001'"
                 + " AND policyId = 'demo-auto-001'");
+    }
+
+    @Test
+    void queryWithStatusFiltersByClaimStatusSearchAttribute() {
+        assertThat(ClaimService.buildClaimListQuery(null, null, "PENDING_DAMAGE_ASSESSMENT"))
+            .isEqualTo(BASE_QUERY + " AND claimStatus = 'PENDING_DAMAGE_ASSESSMENT'");
+    }
+
+    @Test
+    void queryWithStatusComposesWithPolicyFilters() {
+        assertThat(ClaimService.buildClaimListQuery("PH-001", "demo-auto-001", "PENDING_APPROVAL"))
+            .isEqualTo(BASE_QUERY
+                + " AND policyHolderId = 'PH-001'"
+                + " AND policyId = 'demo-auto-001'"
+                + " AND claimStatus = 'PENDING_APPROVAL'");
+    }
+
+    @Test
+    void queryWithInvalidStatusThrowsIllegalArgumentException() {
+        org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException.class,
+            () -> ClaimService.buildClaimListQuery(null, null, "NOT_A_REAL_STATUS"));
     }
 }

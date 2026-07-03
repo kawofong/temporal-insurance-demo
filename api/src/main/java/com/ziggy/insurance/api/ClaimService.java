@@ -36,7 +36,7 @@ public class ClaimService {
     }
 
     private static String generateClaimId() {
-        return "CLM-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+        return "clm-" + UUID.randomUUID().toString().substring(0, 8).toLowerCase();
     }
 
     private static boolean hasText(String value) {
@@ -88,11 +88,11 @@ public class ClaimService {
             .submitDamageAssessment(assessment);
     }
 
-    public AutoClaimListResponse listClaims(String policyHolderId, String policyId) {
+    public AutoClaimListResponse listClaims(String policyHolderId, String policyId, String status) {
         String namespace = workflowClient.getOptions().getNamespace();
         ListWorkflowExecutionsRequest request = ListWorkflowExecutionsRequest.newBuilder()
             .setNamespace(namespace)
-            .setQuery(buildClaimListQuery(policyHolderId, policyId))
+            .setQuery(buildClaimListQuery(policyHolderId, policyId, status))
             .build();
         ListWorkflowExecutionsResponse response = workflowClient.getWorkflowServiceStubs()
             .blockingStub().listWorkflowExecutions(request);
@@ -106,7 +106,7 @@ public class ClaimService {
     }
 
     // Pure, unit-testable (the test server does not implement ListWorkflowExecutions).
-    static String buildClaimListQuery(String policyHolderId, String policyId) {
+    static String buildClaimListQuery(String policyHolderId, String policyId, String status) {
         String query = "WorkflowType = '" + AutoClaimWorkflow.class.getSimpleName() + "'";
         if (hasText(policyHolderId)) {
             query += " AND " + ClaimSearchAttributes.POLICY_HOLDER_ID + " = '" + policyHolderId + "'";
@@ -114,6 +114,21 @@ public class ClaimService {
         if (hasText(policyId)) {
             query += " AND " + ClaimSearchAttributes.POLICY_ID + " = '" + policyId + "'";
         }
+        if (hasText(status)) {
+            if (!isValidClaimStatus(status)) {
+                throw new IllegalArgumentException("Unknown claim status: " + status);
+            }
+            query += " AND " + ClaimSearchAttributes.CLAIM_STATUS + " = '" + status + "'";
+        }
         return query;
+    }
+
+    private static boolean isValidClaimStatus(String status) {
+        try {
+            ClaimStatus.valueOf(status);
+            return true;
+        } catch (IllegalArgumentException ex) {
+            return false;
+        }
     }
 }

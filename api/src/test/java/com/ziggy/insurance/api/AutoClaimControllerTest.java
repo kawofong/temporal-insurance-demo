@@ -107,7 +107,7 @@ class AutoClaimControllerTest {
         FnolResponse response = objectMapper.readValue(
             result.getResponse().getContentAsString(), FnolResponse.class);
         claimId = response.claimId();
-        assertThat(claimId).startsWith("CLM-");
+        assertThat(claimId).startsWith("clm-");
     }
 
     @Test
@@ -188,7 +188,7 @@ class AutoClaimControllerTest {
 
         String body = """
             {
-                "adjusterId": "ADJ-SARAH",
+                "adjusterId": "adj-sarah",
                 "approvedPayoutAmount": 4200,
                 "notes": "Approved after review"
             }
@@ -207,8 +207,8 @@ class AutoClaimControllerTest {
         mockMvc.perform(get(BASE_URL + "/" + claimId))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.status").value("CLOSED"))
-            .andExpect(jsonPath("$.approvedByAdjusterId").value("ADJ-SARAH"))
-            .andExpect(jsonPath("$.paymentReference").value("PAY-" + claimId));
+            .andExpect(jsonPath("$.approvedByAdjusterId").value("adj-sarah"))
+            .andExpect(jsonPath("$.paymentReference").value("pay-" + claimId));
     }
 
     @Test
