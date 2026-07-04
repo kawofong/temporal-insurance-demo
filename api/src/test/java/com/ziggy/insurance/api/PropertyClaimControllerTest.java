@@ -1,4 +1,4 @@
-// Integration tests for AutoClaimController.
+// Integration tests for PropertyClaimController.
 // Verifies HTTP endpoints map correctly to Temporal workflow start, query, and signal.
 package com.ziggy.insurance.api;
 
@@ -7,9 +7,9 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.ziggy.insurance.domains.claim.auto.AutoClaimActivitiesImpl;
-import com.ziggy.insurance.domains.claim.auto.AutoClaimState;
-import com.ziggy.insurance.domains.claim.auto.AutoClaimWorkflowImpl;
+import com.ziggy.insurance.domains.claim.property.PropertyClaimActivitiesImpl;
+import com.ziggy.insurance.domains.claim.property.PropertyClaimState;
+import com.ziggy.insurance.domains.claim.property.PropertyClaimWorkflowImpl;
 import com.ziggy.insurance.domains.claim.search.ClaimSearchAttributes;
 import com.ziggy.insurance.domains.notifications.NotificationActivitiesImpl;
 import com.ziggy.insurance.domains.notifications.NotificationServiceImpl;
@@ -22,7 +22,6 @@ import io.temporal.testing.TestWorkflowEnvironment;
 import io.temporal.worker.Worker;
 import java.time.Duration;
 import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
@@ -31,20 +30,19 @@ import org.junit.jupiter.api.TestMethodOrder;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
-@WebMvcTest(AutoClaimController.class)
-@Import({ClaimService.class, GlobalExceptionHandler.class})
+@WebMvcTest(PropertyClaimController.class)
+@org.springframework.context.annotation.Import({PropertyClaimService.class, GlobalExceptionHandler.class})
 @TestPropertySource(properties = "spring.temporal.test-server.enabled=false")
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-class AutoClaimControllerTest {
+class PropertyClaimControllerTest {
 
-    private static final String BASE_URL = "/api/v1/claims/auto";
+    private static final String BASE_URL = "/api/v1/claims/property";
 
     static TestWorkflowEnvironment testEnv;
     static String claimId;
@@ -58,8 +56,8 @@ class AutoClaimControllerTest {
             testEnv.registerSearchAttribute(ClaimSearchAttributes.POLICY_HOLDER_ID, IndexedValueType.INDEXED_VALUE_TYPE_KEYWORD);
             testEnv.registerSearchAttribute(ClaimSearchAttributes.CLAIM_STATUS, IndexedValueType.INDEXED_VALUE_TYPE_KEYWORD);
             Worker worker = testEnv.newWorker(TaskQueues.CLAIM_TASK_QUEUE);
-            worker.registerWorkflowImplementationTypes(AutoClaimWorkflowImpl.class);
-            worker.registerActivitiesImplementations(new AutoClaimActivitiesImpl());
+            worker.registerWorkflowImplementationTypes(PropertyClaimWorkflowImpl.class);
+            worker.registerActivitiesImplementations(new PropertyClaimActivitiesImpl());
 
             // The claim workflow notifies the policyholder over Nexus; stand up the
             // notifications domain (Nexus handler + workflow + activities) and endpoint.
@@ -97,15 +95,12 @@ class AutoClaimControllerTest {
     void submitFnolReturnsClaimIdImmediately() throws Exception {
         String body = """
             {
-                "policyId": "demo-auto-001",
+                "policyId": "demo-property-001",
                 "policyHolderId": "PH-001",
-                "incidentDescription": "Rear-ended at a stoplight",
+                "incidentDescription": "Kitchen fire from a grease flare-up",
                 "incidentDate": 1750000000,
-                "incidentLocation": "Chicago, IL",
-                "vehicleVin": "1HGFE2F59NH000001",
-                "vehicleMake": "Honda",
-                "vehicleModel": "Civic",
-                "vehicleYear": 2022
+                "propertyAddress": "742 Evergreen Terrace",
+                "propertyType": "SINGLE_FAMILY"
             }
             """;
 
@@ -125,18 +120,15 @@ class AutoClaimControllerTest {
 
     @Test
     @Order(2)
-    void submitFnolWithBlankVinReturns400() throws Exception {
+    void submitFnolWithBlankAddressReturns400() throws Exception {
         String body = """
             {
-                "policyId": "demo-auto-001",
+                "policyId": "demo-property-001",
                 "policyHolderId": "PH-001",
-                "incidentDescription": "Rear-ended at a stoplight",
+                "incidentDescription": "Kitchen fire from a grease flare-up",
                 "incidentDate": 1750000000,
-                "incidentLocation": "Chicago, IL",
-                "vehicleVin": "",
-                "vehicleMake": "Honda",
-                "vehicleModel": "Civic",
-                "vehicleYear": 2022
+                "propertyAddress": "",
+                "propertyType": "SINGLE_FAMILY"
             }
             """;
 
@@ -152,15 +144,12 @@ class AutoClaimControllerTest {
     void submitFnolWithNonPositiveIncidentDateReturns400() throws Exception {
         String body = """
             {
-                "policyId": "demo-auto-001",
+                "policyId": "demo-property-001",
                 "policyHolderId": "PH-001",
-                "incidentDescription": "Rear-ended at a stoplight",
+                "incidentDescription": "Kitchen fire from a grease flare-up",
                 "incidentDate": 0,
-                "incidentLocation": "Chicago, IL",
-                "vehicleVin": "1HGFE2F59NH000002",
-                "vehicleMake": "Honda",
-                "vehicleModel": "Civic",
-                "vehicleYear": 2022
+                "propertyAddress": "742 Evergreen Terrace",
+                "propertyType": "SINGLE_FAMILY"
             }
             """;
 
@@ -179,21 +168,21 @@ class AutoClaimControllerTest {
             .andExpect(jsonPath("$.claimId").value(claimId))
             .andReturn();
 
-        AutoClaimState state = objectMapper.readValue(
-            result.getResponse().getContentAsString(), AutoClaimState.class);
-        assertThat(state.getPolicyId()).isEqualTo("demo-auto-001");
+        PropertyClaimState state = objectMapper.readValue(
+            result.getResponse().getContentAsString(), PropertyClaimState.class);
+        assertThat(state.getPolicyId()).isEqualTo("demo-property-001");
     }
 
     @Test
     @Order(5)
-    void approveClaimTransitionsToApprovedThenClosed() throws Exception {
+    void approveClaimTransitionsToClosed() throws Exception {
         // The field adjuster submits their assessment (Signal) so the claim leaves
         // PENDING_DAMAGE_ASSESSMENT for PENDING_APPROVAL.
         awaitStatus(claimId, "PENDING_DAMAGE_ASSESSMENT");
         mockMvc.perform(post(BASE_URL + "/" + claimId + "/damage-assessment")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
-                    { "summary": "Moderate front-end collision damage.", "estimatedCost": 4200 }
+                    { "summary": "Moderate smoke and fire damage to the kitchen.", "estimatedCost": 18500 }
                     """))
             .andExpect(status().isAccepted());
 
@@ -202,7 +191,7 @@ class AutoClaimControllerTest {
         String body = """
             {
                 "adjusterId": "adj-sarah",
-                "approvedPayoutAmount": 4200,
+                "approvedPayoutAmount": 18500,
                 "notes": "Approved after review"
             }
             """;
@@ -237,8 +226,8 @@ class AutoClaimControllerTest {
         String actual = null;
         while (System.currentTimeMillis() < deadline) {
             MvcResult result = mockMvc.perform(get(BASE_URL + "/" + claimId)).andReturn();
-            AutoClaimState state = objectMapper.readValue(
-                result.getResponse().getContentAsString(), AutoClaimState.class);
+            PropertyClaimState state = objectMapper.readValue(
+                result.getResponse().getContentAsString(), PropertyClaimState.class);
             actual = state.getStatus().name();
             if (actual.equals(expectedStatus)) {
                 return;
