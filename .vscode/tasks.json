@@ -57,7 +57,23 @@
             },
             "isBackground": true,
             "dependsOn": ["temporal-server"],
-            "problemMatcher": [],
+            "problemMatcher": [
+                {
+                    "pattern": [
+                        {
+                            "regexp": "^(NOMATCH)(.*)$",
+                            "file": 1,
+                            "message": 2,
+                            "kind": "file"
+                        }
+                    ],
+                    "background": {
+                        "activeOnStart": true,
+                        "beginsPattern": "Starting ApiApplication",
+                        "endsPattern": "Started ApiApplication in "
+                    }
+                }
+            ],
             "presentation": {
                 "group": "demo",
                 "reveal": "always",
@@ -80,8 +96,23 @@
             }
         },
         {
+            "label": "demo-setup",
+            "type": "shell",
+            "command": "source ~/.zshrc 2>/dev/null || true; until curl -s -o /dev/null --connect-timeout 1 http://localhost:8080; do echo 'Waiting for API...'; sleep 2; done; mise run demo:setup",
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "dependsOn": ["temporal-server", "api"],
+            "problemMatcher": [],
+            "presentation": {
+                "group": "demo",
+                "reveal": "always",
+                "panel": "new"
+            }
+        },
+        {
             "label": "Start Local",
-            "dependsOn": ["temporal-server", "api", "ui", "worker"],
+            "dependsOn": ["temporal-server", "api", "ui", "worker", "demo-setup"],
             "problemMatcher": [],
             "group": {
                 "kind": "build",
