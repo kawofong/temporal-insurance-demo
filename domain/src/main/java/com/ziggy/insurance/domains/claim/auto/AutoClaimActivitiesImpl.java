@@ -58,18 +58,11 @@ public class AutoClaimActivitiesImpl implements AutoClaimActivities {
         return "pay-" + claimId;
     }
 
-    @Override
-    public void sendEmailNotification(String policyHolderId, String claimId, String message) {
-        // Artificial 100-500 ms delay so the demo shows realistic downstream latency.
-        simulateProcessingDelay();
-        // Demo stand-in: a real impl would email the policyholder.
-    }
-
     // Sleeps a random 100-500 ms to mimic downstream system latency. Demo only — this makes
     // activity execution visible in the timeline; a real activity would do actual work instead.
     private static void simulateProcessingDelay() {
         try {
-            Thread.sleep(ThreadLocalRandom.current().nextInt(100, 501));
+            Thread.sleep(ThreadLocalRandom.current().nextInt(500, 1001));
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         }

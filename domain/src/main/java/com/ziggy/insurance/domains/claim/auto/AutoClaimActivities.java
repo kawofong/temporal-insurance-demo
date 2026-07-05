@@ -22,8 +22,4 @@ public interface AutoClaimActivities {
     // claimId is the idempotency key so retries after a crash never double-pay.
     @ActivityMethod
     String processPayment(String claimId, String policyHolderId, int amount);
-
-    // Mock email to the policyholder; the workflow calls this on every status change.
-    @ActivityMethod
-    void sendEmailNotification(String policyHolderId, String claimId, String message);
 }

@@ -13,3 +13,6 @@ spring:
     workers:
       - task-queue: policy-task-queue
       - task-queue: claim-task-queue
+      # Hosts the notifications domain's Nexus service handler. The Nexus endpoint
+      # 'notifications-ep' must be created on the server pointing here (see AGENTS.md).
+      - task-queue: notifications-task-queue

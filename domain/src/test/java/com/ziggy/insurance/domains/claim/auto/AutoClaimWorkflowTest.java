@@ -8,6 +8,10 @@ import com.ziggy.insurance.domains.claim.models.AdjusterApprovalRequest;
 import com.ziggy.insurance.domains.claim.models.ClaimStatus;
 import com.ziggy.insurance.domains.claim.models.DamageAssessmentResult;
 import com.ziggy.insurance.domains.claim.search.ClaimSearchAttributes;
+import com.ziggy.insurance.domains.notifications.NotificationActivitiesImpl;
+import com.ziggy.insurance.domains.notifications.NotificationServiceImpl;
+import com.ziggy.insurance.domains.notifications.NotificationWorkflowImpl;
+import com.ziggy.insurance.domains.notifications.NotificationsNexus;
 import com.ziggy.insurance.domains.policy.TaskQueues;
 import io.temporal.api.enums.v1.IndexedValueType;
 import io.temporal.client.WorkflowClient;
@@ -33,6 +37,18 @@ class AutoClaimWorkflowTest {
             .build();
     }
 
+    // Stands up the notifications domain the claim workflow calls over Nexus: a worker hosting
+    // the Nexus service handler plus the workflow and activities it starts on the notifications
+    // task queue, and the endpoint the claim workflow's stub targets. Without this the
+    // workflow's sendNotification call would fail.
+    private void registerNotifications(TestWorkflowEnvironment env) {
+        Worker notificationsWorker = env.newWorker(NotificationsNexus.TASK_QUEUE);
+        notificationsWorker.registerNexusServiceImplementation(new NotificationServiceImpl());
+        notificationsWorker.registerWorkflowImplementationTypes(NotificationWorkflowImpl.class);
+        notificationsWorker.registerActivitiesImplementations(new NotificationActivitiesImpl());
+        env.createNexusEndpoint(NotificationsNexus.ENDPOINT, NotificationsNexus.TASK_QUEUE);
+    }
+
     private void registerSearchAttributes(TestWorkflowEnvironment env) {
         env.registerSearchAttribute(ClaimSearchAttributes.POLICY_ID, IndexedValueType.INDEXED_VALUE_TYPE_KEYWORD);
         env.registerSearchAttribute(ClaimSearchAttributes.POLICY_HOLDER_ID, IndexedValueType.INDEXED_VALUE_TYPE_KEYWORD);
@@ -46,6 +62,7 @@ class AutoClaimWorkflowTest {
             Worker worker = env.newWorker(TaskQueues.CLAIM_TASK_QUEUE);
             worker.registerWorkflowImplementationTypes(AutoClaimWorkflowImpl.class);
             worker.registerActivitiesImplementations(new AutoClaimActivitiesImpl());
+            registerNotifications(env);
             env.start();
 
             AutoClaimWorkflow wf = env.getWorkflowClient().newWorkflowStub(
@@ -65,6 +82,7 @@ class AutoClaimWorkflowTest {
             Worker worker = env.newWorker(TaskQueues.CLAIM_TASK_QUEUE);
             worker.registerWorkflowImplementationTypes(AutoClaimWorkflowImpl.class);
             worker.registerActivitiesImplementations(new AutoClaimActivitiesImpl());
+            registerNotifications(env);
             env.start();
 
             AutoClaimWorkflow wf = env.getWorkflowClient().newWorkflowStub(
@@ -101,6 +119,7 @@ class AutoClaimWorkflowTest {
             Worker worker = env.newWorker(TaskQueues.CLAIM_TASK_QUEUE);
             worker.registerWorkflowImplementationTypes(AutoClaimWorkflowImpl.class);
             worker.registerActivitiesImplementations(new AutoClaimActivitiesImpl());
+            registerNotifications(env);
             env.start();
 
             AutoClaimWorkflow wf = env.getWorkflowClient().newWorkflowStub(

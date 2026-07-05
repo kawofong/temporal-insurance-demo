@@ -7,8 +7,13 @@ import com.ziggy.insurance.domains.claim.models.ClaimStatus;
 import com.ziggy.insurance.domains.claim.models.CoverageVerificationResult;
 import com.ziggy.insurance.domains.claim.models.DamageAssessmentResult;
 import com.ziggy.insurance.domains.claim.search.ClaimSearchAttributes;
+import com.ziggy.insurance.domains.notifications.NotificationService;
+import com.ziggy.insurance.domains.notifications.NotificationsNexus;
+import com.ziggy.insurance.domains.notifications.models.NotificationRequest;
 import io.temporal.activity.ActivityOptions;
 import io.temporal.spring.boot.WorkflowImpl;
+import io.temporal.workflow.NexusOperationOptions;
+import io.temporal.workflow.NexusServiceOptions;
 import io.temporal.workflow.Workflow;
 import io.temporal.workflow.WorkflowInit;
 import java.time.Duration;
@@ -20,6 +25,18 @@ public class AutoClaimWorkflowImpl implements AutoClaimWorkflow {
     private boolean damageAssessed = false;
     private boolean adjusterApproved = false;
     private AutoClaimActivities activities;
+
+    // Notifications live in their own domain; the claim reaches them across a Nexus boundary
+    // rather than calling a local activity. The endpoint routes to the notifications task queue.
+    private final NotificationService notifications = Workflow.newNexusServiceStub(
+        NotificationService.class,
+        NexusServiceOptions.newBuilder()
+            .setEndpoint(NotificationsNexus.ENDPOINT)
+            .setOperationOptions(
+                NexusOperationOptions.newBuilder()
+                    .setStartToCloseTimeout(Duration.ofSeconds(2))
+                    .build())
+            .build());
 
     // @WorkflowInit guarantees state is set before any Query (e.g. an early GET) or Signal runs.
     @WorkflowInit
@@ -101,13 +118,16 @@ public class AutoClaimWorkflowImpl implements AutoClaimWorkflow {
         return state;
     }
 
-    // Advances the claim to a new status and emails the policyholder about the change.
+    // Advances the claim to a new status and notifies the policyholder about the change.
+    // The notification is delivered by the notifications domain over Nexus, which fans the
+    // message out across whatever channels (email/app/text) the policyholder prefers.
     private void updateStatus(ClaimStatus status) {
         state.setStatus(status);
         ClaimSearchAttributes.upsertClaimStatus(status);
-        activities.sendEmailNotification(
+        notifications.sendNotification(new NotificationRequest(
             state.getPolicyHolderId(),
-            state.getClaimId(),
-            "Your claim " + state.getClaimId() + " is now " + status + ".");
+            "Claim " + state.getClaimId() + " update",
+            "Your claim " + state.getClaimId() + " is now " + status + ".",
+            state.getClaimId()));
     }
 }
