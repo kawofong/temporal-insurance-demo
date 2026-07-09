@@ -12,7 +12,8 @@ driven through **mise** (`mise.toml`).
 ## Modules
 
 - `domain/` — Temporal workflows, activities, models, and search attributes (plain Java, no Spring).
-  Organized by domain under `com.ziggy.insurance.domains`: `policy`, `claim`, `notifications`, `demo`.
+  Organized by domain under `com.ziggy.insurance.domains`: `policy`, `claim`, `notifications`,
+  `payment`, `demo`.
   The `notifications` domain owns all customer/third-party notifications and exposes a **Nexus
   service** (`NotificationService.sendNotification`) that other domains call across the Nexus
   boundary. The operation is **backed by a workflow** (`NotificationWorkflow`) that resolves the
@@ -20,6 +21,12 @@ driven through **mise** (`mise.toml`).
   channel **in parallel** via activities. The claim workflow notifies policyholders on every status
   change through this service rather than a local activity. Preference lookup and dispatch are mocked
   activities (the preference lookup always returns every channel).
+  The `payment` domain owns all customer payments and exposes a **Nexus service**
+  (`PaymentService.processPayment`) that other domains call across the Nexus boundary instead of
+  owning payment logic. The operation is **backed by a workflow** (`PaymentWorkflow`, started with
+  workflow id `payment/{claimId}` so a retried operation dedupes onto one run and never double-pays)
+  that drives a mocked, deliberately flaky payment-gateway activity to success via Temporal's default
+  retries. The claim workflow triggers claim payouts through this service rather than a local activity.
 - `api/` — Spring Boot REST API. **Temporal client only — it runs no workers.** It starts,
   queries, and signals workflows and lists them via the visibility API.
 - `workers/` — Spring Boot worker process that actually executes workflows and activities.
@@ -35,9 +42,9 @@ mise run api
 mise run portal:dev
 ```
 
-`temporal:nexus` creates the `notifications-ep` Nexus endpoint (idempotent). It needs the
-dev server from `temporal:dev` already running, and must exist before any claim runs — otherwise
-the claim workflow's `sendNotification` call cannot be routed.
+`temporal:nexus` creates the `notifications-ep` and `payment-ep` Nexus endpoints (idempotent). It
+needs the dev server from `temporal:dev` already running, and they must exist before any claim
+runs — otherwise the claim workflow's `sendNotification` / `processPayment` calls cannot be routed.
 
 Then seed demo data (idempotent): `curl -X POST http://localhost:8080/api/v1/demo/setup`
 
@@ -52,13 +59,13 @@ mise run test
 ## Project conventions & gotchas
 
 - Temporal Workflow IDs: policies `policy/{auto|property|commercial}/{policyId}`,
-  claims `claim/auto/{claimId}`. Task queues: `policy-task-queue`, `claim-task-queue`,
-  `notifications-task-queue`.
-- **The `notifications-ep` Nexus endpoint must exist in every environment**, just like the
-  custom search attributes. Locally, `mise run temporal:nexus` creates it (target task queue
-  `notifications-task-queue`, same namespace). Tests create it in-process via
-  `TestWorkflowEnvironment.createNexusEndpoint(...)`. Miss it and any claim status change hangs
-  the workflow on the Nexus call.
+  claims `claim/auto/{claimId}`, payments `payment/{claimId}`. Task queues: `policy-task-queue`,
+  `claim-task-queue`, `notifications-task-queue`, `payment-task-queue`.
+- **The `notifications-ep` and `payment-ep` Nexus endpoints must exist in every environment**, just
+  like the custom search attributes. Locally, `mise run temporal:nexus` creates them (target task
+  queues `notifications-task-queue` / `payment-task-queue`, same namespace). Tests create them
+  in-process via `TestWorkflowEnvironment.createNexusEndpoint(...)`. Miss `notifications-ep` and any
+  claim status change hangs on the Nexus call; miss `payment-ep` and the claim hangs at payout.
 - Keep every workflow in the same Temporal namespace; Nexus is used for the cross-domain call
   boundary, not for crossing namespaces here.
 - **Custom search attributes must be registered in every environment.** The dev server

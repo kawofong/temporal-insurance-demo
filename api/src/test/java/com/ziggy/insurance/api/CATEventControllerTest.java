@@ -18,6 +18,10 @@ import com.ziggy.insurance.domains.notifications.NotificationActivitiesImpl;
 import com.ziggy.insurance.domains.notifications.NotificationServiceImpl;
 import com.ziggy.insurance.domains.notifications.NotificationWorkflowImpl;
 import com.ziggy.insurance.domains.notifications.NotificationsNexus;
+import com.ziggy.insurance.domains.payment.PaymentActivities;
+import com.ziggy.insurance.domains.payment.PaymentNexus;
+import com.ziggy.insurance.domains.payment.PaymentServiceImpl;
+import com.ziggy.insurance.domains.payment.PaymentWorkflowImpl;
 import com.ziggy.insurance.domains.policy.TaskQueues;
 import io.temporal.api.enums.v1.IndexedValueType;
 import io.temporal.client.WorkflowClient;
@@ -63,9 +67,13 @@ class CATEventControllerTest {
 
         @Override
         public void dispatchFieldAdjuster(String claimId, String adjusterId) {}
+    }
 
+    // Delay-free, non-flaky payment stand-in so each child claim's payout (over Nexus) settles
+    // instantly instead of running the real gateway's retry backoff across the fan-out.
+    static class FastPaymentActivities implements PaymentActivities {
         @Override
-        public String processPayment(String claimId, String policyHolderId, int amount) {
+        public String disburse(String claimId, String policyHolderId, int amount) {
             return "pay-" + claimId;
         }
     }
@@ -90,6 +98,14 @@ class CATEventControllerTest {
             notificationsWorker.registerWorkflowImplementationTypes(NotificationWorkflowImpl.class);
             notificationsWorker.registerActivitiesImplementations(new NotificationActivitiesImpl());
             testEnv.createNexusEndpoint(NotificationsNexus.ENDPOINT, NotificationsNexus.TASK_QUEUE);
+
+            // Each child claim disburses its payout over Nexus; stand up the payment domain
+            // (Nexus handler + workflow + fast activity) and endpoint.
+            Worker paymentWorker = testEnv.newWorker(PaymentNexus.TASK_QUEUE);
+            paymentWorker.registerNexusServiceImplementation(new PaymentServiceImpl());
+            paymentWorker.registerWorkflowImplementationTypes(PaymentWorkflowImpl.class);
+            paymentWorker.registerActivitiesImplementations(new FastPaymentActivities());
+            testEnv.createNexusEndpoint(PaymentNexus.ENDPOINT, PaymentNexus.TASK_QUEUE);
 
             testEnv.start();
             return testEnv;

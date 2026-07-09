@@ -10,6 +10,10 @@ import com.ziggy.insurance.domains.claim.search.ClaimSearchAttributes;
 import com.ziggy.insurance.domains.notifications.NotificationService;
 import com.ziggy.insurance.domains.notifications.NotificationsNexus;
 import com.ziggy.insurance.domains.notifications.models.NotificationRequest;
+import com.ziggy.insurance.domains.payment.PaymentNexus;
+import com.ziggy.insurance.domains.payment.PaymentService;
+import com.ziggy.insurance.domains.payment.models.PaymentRequest;
+import com.ziggy.insurance.domains.payment.models.PaymentResult;
 import io.temporal.activity.ActivityOptions;
 import io.temporal.spring.boot.WorkflowImpl;
 import io.temporal.workflow.NexusOperationOptions;
@@ -38,6 +42,20 @@ public class AutoClaimWorkflowImpl implements AutoClaimWorkflow {
                     .build())
             .build());
 
+    // Payments also live in their own domain; the claim triggers a payout across the Nexus
+    // boundary instead of owning payment logic. The operation is backed by a payment workflow
+    // that retries the flaky gateway to success, so a generous schedule-to-close timeout covers
+    // that retry backoff.
+    private final PaymentService payments = Workflow.newNexusServiceStub(
+        PaymentService.class,
+        NexusServiceOptions.newBuilder()
+            .setEndpoint(PaymentNexus.ENDPOINT)
+            .setOperationOptions(
+                NexusOperationOptions.newBuilder()
+                    .setScheduleToCloseTimeout(Duration.ofMinutes(5))
+                    .build())
+            .build());
+
     // @WorkflowInit guarantees state is set before any Query (e.g. an early GET) or Signal runs.
     @WorkflowInit
     public AutoClaimWorkflowImpl(AutoClaimInput input) {
@@ -51,7 +69,8 @@ public class AutoClaimWorkflowImpl implements AutoClaimWorkflow {
         ClaimSearchAttributes.upsertPolicyId(input.policyId());
         ClaimSearchAttributes.upsertPolicyHolderId(input.policyHolderId());
 
-        // No RetryOptions set — the default retry policy is what drives processPayment to success.
+        // Local claim activities (coverage, adjuster). Payment now lives in the payment domain
+        // and is triggered over Nexus, not through this stub.
         this.activities = Workflow.newActivityStub(
             AutoClaimActivities.class,
             ActivityOptions.newBuilder()
@@ -89,9 +108,9 @@ public class AutoClaimWorkflowImpl implements AutoClaimWorkflow {
         Workflow.await(() -> adjusterApproved);
 
         updateStatus(ClaimStatus.PAYMENT_PROCESSING);
-        String paymentRef = activities.processPayment(
-            state.getClaimId(), state.getPolicyHolderId(), state.getApprovedPayoutAmount());
-        state.setPaymentReference(paymentRef);
+        PaymentResult payment = payments.processPayment(new PaymentRequest(
+            state.getClaimId(), state.getPolicyHolderId(), state.getApprovedPayoutAmount()));
+        state.setPaymentReference(payment.paymentReference());
 
         state.setClosedAt(Workflow.currentTimeMillis());
         updateStatus(ClaimStatus.CLOSED);

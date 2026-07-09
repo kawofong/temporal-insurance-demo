@@ -15,6 +15,10 @@ import com.ziggy.insurance.domains.notifications.NotificationActivitiesImpl;
 import com.ziggy.insurance.domains.notifications.NotificationServiceImpl;
 import com.ziggy.insurance.domains.notifications.NotificationWorkflowImpl;
 import com.ziggy.insurance.domains.notifications.NotificationsNexus;
+import com.ziggy.insurance.domains.payment.PaymentActivitiesImpl;
+import com.ziggy.insurance.domains.payment.PaymentNexus;
+import com.ziggy.insurance.domains.payment.PaymentServiceImpl;
+import com.ziggy.insurance.domains.payment.PaymentWorkflowImpl;
 import com.ziggy.insurance.domains.policy.TaskQueues;
 import io.temporal.api.enums.v1.IndexedValueType;
 import io.temporal.client.WorkflowClient;
@@ -68,6 +72,15 @@ class AutoClaimControllerTest {
             notificationsWorker.registerWorkflowImplementationTypes(NotificationWorkflowImpl.class);
             notificationsWorker.registerActivitiesImplementations(new NotificationActivitiesImpl());
             testEnv.createNexusEndpoint(NotificationsNexus.ENDPOINT, NotificationsNexus.TASK_QUEUE);
+
+            // The claim workflow disburses the payout over Nexus; stand up the payment domain
+            // (Nexus handler + workflow + activity) and endpoint. The activity is deliberately
+            // flaky, which is why the payment step retries before the claim reaches CLOSED.
+            Worker paymentWorker = testEnv.newWorker(PaymentNexus.TASK_QUEUE);
+            paymentWorker.registerNexusServiceImplementation(new PaymentServiceImpl());
+            paymentWorker.registerWorkflowImplementationTypes(PaymentWorkflowImpl.class);
+            paymentWorker.registerActivitiesImplementations(new PaymentActivitiesImpl());
+            testEnv.createNexusEndpoint(PaymentNexus.ENDPOINT, PaymentNexus.TASK_QUEUE);
 
             testEnv.start();
             return testEnv;
@@ -212,8 +225,9 @@ class AutoClaimControllerTest {
                 .content(body))
             .andExpect(status().isAccepted());
 
-        // processPayment fails until attempt 6; advance the time-skipping server past the
-        // default retry backoff so the claim reaches CLOSED without a real-time wait.
+        // The payment gateway fails until attempt 6; advance the time-skipping server past the
+        // default retry backoff so the payment (over Nexus) settles and the claim reaches CLOSED
+        // without a real-time wait.
         testEnv.sleep(Duration.ofSeconds(40));
         awaitStatus(claimId, "CLOSED");
 

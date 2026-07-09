@@ -3,7 +3,6 @@
 package com.ziggy.insurance.domains.claim.property;
 
 import com.ziggy.insurance.domains.claim.models.CoverageVerificationResult;
-import io.temporal.activity.Activity;
 import io.temporal.spring.boot.ActivityImpl;
 import java.util.concurrent.ThreadLocalRandom;
 import org.springframework.stereotype.Component;
@@ -14,8 +13,6 @@ public class PropertyClaimActivitiesImpl implements PropertyClaimActivities {
 
     private static final int DEFAULT_DEDUCTIBLE = 1000;
     private static final String DEFAULT_ADJUSTER_ID = "adj-sarah";
-    // processPayment fails on earlier attempts so the demo shows Temporal retrying to success.
-    private static final int PAYMENT_SUCCEEDS_ON_ATTEMPT = 6;
 
     @Override
     public CoverageVerificationResult verifyCoverage(String policyId, String propertyAddress) {
@@ -44,19 +41,6 @@ public class PropertyClaimActivitiesImpl implements PropertyClaimActivities {
         // Artificial 500-1000 ms delay so the demo shows realistic downstream latency.
         simulateProcessingDelay();
         // Demo stand-in: a real impl would notify the field adjuster app to inspect the property.
-    }
-
-    @Override
-    public String processPayment(String claimId, String policyHolderId, int amount) {
-        // Artificial 500-1000 ms delay so the demo shows realistic downstream latency.
-        simulateProcessingDelay();
-        // Simulate a flaky payment gateway: fail early attempts so the default retry policy
-        // drives the activity to eventual success.
-        int attempt = Activity.getExecutionContext().getInfo().getAttempt();
-        if (attempt < PAYMENT_SUCCEEDS_ON_ATTEMPT) {
-            throw new RuntimeException("Payment gateway unavailable (attempt " + attempt + ")");
-        }
-        return "pay-" + claimId;
     }
 
     // Sleeps a random 500-1000 ms to mimic downstream system latency. Demo only — this makes

@@ -16,6 +16,10 @@ import com.ziggy.insurance.domains.notifications.NotificationActivitiesImpl;
 import com.ziggy.insurance.domains.notifications.NotificationServiceImpl;
 import com.ziggy.insurance.domains.notifications.NotificationWorkflowImpl;
 import com.ziggy.insurance.domains.notifications.NotificationsNexus;
+import com.ziggy.insurance.domains.payment.PaymentActivities;
+import com.ziggy.insurance.domains.payment.PaymentNexus;
+import com.ziggy.insurance.domains.payment.PaymentServiceImpl;
+import com.ziggy.insurance.domains.payment.PaymentWorkflowImpl;
 import com.ziggy.insurance.domains.policy.TaskQueues;
 import io.temporal.api.enums.v1.IndexedValueType;
 import io.temporal.client.WorkflowClient;
@@ -44,9 +48,13 @@ class CATEventWorkflowTest {
 
         @Override
         public void dispatchFieldAdjuster(String claimId, String adjusterId) {}
+    }
 
+    // Delay-free, non-flaky payment stand-in so each child claim's payout (over Nexus) settles
+    // instantly instead of running the real gateway's retry backoff across the fan-out.
+    static class FastPaymentActivities implements PaymentActivities {
         @Override
-        public String processPayment(String claimId, String policyHolderId, int amount) {
+        public String disburse(String claimId, String policyHolderId, int amount) {
             return "pay-" + claimId;
         }
     }
@@ -68,6 +76,17 @@ class CATEventWorkflowTest {
         env.createNexusEndpoint(NotificationsNexus.ENDPOINT, NotificationsNexus.TASK_QUEUE);
     }
 
+    // Stands up the payment domain each child claim calls over Nexus to disburse its payout: a
+    // worker hosting the Nexus service handler plus the workflow and (fast) activity it starts on
+    // the payment task queue, and the endpoint the claim workflow's stub targets.
+    private void registerPayment(TestWorkflowEnvironment env) {
+        Worker paymentWorker = env.newWorker(PaymentNexus.TASK_QUEUE);
+        paymentWorker.registerNexusServiceImplementation(new PaymentServiceImpl());
+        paymentWorker.registerWorkflowImplementationTypes(PaymentWorkflowImpl.class);
+        paymentWorker.registerActivitiesImplementations(new FastPaymentActivities());
+        env.createNexusEndpoint(PaymentNexus.ENDPOINT, PaymentNexus.TASK_QUEUE);
+    }
+
     @Test
     void fanOutFilesAllClaimsAcrossContinueAsNewThenCompletes() {
         try (TestWorkflowEnvironment env = TestWorkflowEnvironment.newInstance()) {
@@ -77,6 +96,7 @@ class CATEventWorkflowTest {
                 CATEventWorkflowImpl.class, PropertyClaimWorkflowImpl.class);
             worker.registerActivitiesImplementations(new FastPropertyClaimActivities());
             registerNotifications(env);
+            registerPayment(env);
             env.start();
 
             String catEventId = "EVT-2025-WILDFIRE-CA";

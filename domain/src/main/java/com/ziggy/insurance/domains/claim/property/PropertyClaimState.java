@@ -40,7 +40,7 @@ public class PropertyClaimState {
     private int approvedPayoutAmount;
     private long approvedAt;
 
-    // ── Payment (populated by processPayment) ─────────────────────
+    // ── Payment (populated from the payment domain's Nexus result) ─────────────────────
     private String paymentReference;
     private long closedAt;
 
