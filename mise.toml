@@ -10,7 +10,7 @@ description = "Run a local Temporal dev server"
 run = "temporal server start-dev --search-attribute policyHolderId=Keyword --search-attribute policyStatus=Keyword --search-attribute policyId=Keyword --search-attribute claimStatus=Keyword"
 
 [tasks."demo:setup"]
-description = "Set up the demo environment: create the notifications Nexus endpoint and seed demo data (idempotent)"
+description = "Set up the demo environment: create the notifications and payment Nexus endpoints and seed demo data (idempotent)"
 run = "./scripts/demo-setup.sh"
 
 [tasks."temporal:worker"]

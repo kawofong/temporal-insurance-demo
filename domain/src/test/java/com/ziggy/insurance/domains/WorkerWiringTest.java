@@ -5,6 +5,7 @@ package com.ziggy.insurance.domains;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.ziggy.insurance.domains.notifications.NotificationServiceImpl;
+import com.ziggy.insurance.domains.payment.PaymentServiceImpl;
 import io.temporal.spring.boot.ActivityImpl;
 import io.temporal.spring.boot.NexusServiceImpl;
 import java.util.ArrayList;
@@ -28,10 +29,10 @@ class WorkerWiringTest {
         List<Class<?>> handlers = findWorkerHandlerImpls();
 
         // Guard against a vacuous pass: the scan must actually find the handlers it checks,
-        // including the notifications Nexus service that regressed.
+        // including the notifications and payment Nexus services.
         assertThat(handlers)
             .as("scan should discover worker handler impls")
-            .contains(NotificationServiceImpl.class);
+            .contains(NotificationServiceImpl.class, PaymentServiceImpl.class);
 
         List<Class<?>> missingComponent = new ArrayList<>();
         for (Class<?> impl : handlers) {

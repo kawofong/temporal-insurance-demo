@@ -17,7 +17,7 @@ class ClaimActivityRegistrationTest {
 
     // Both the auto and property claim activity impls are @ActivityImpl(taskQueues =
     // "claim-task-queue"), so the real worker registers both together. Their interfaces share
-    // method names (verifyCoverage, assignAdjuster, dispatchFieldAdjuster, processPayment), so
+    // method names (verifyCoverage, assignAdjuster, dispatchFieldAdjuster), so
     // without a distinguishing namePrefix the second registration throws
     // TypeAlreadyRegisteredException. Registering both on one worker asserts the names are
     // disambiguated.

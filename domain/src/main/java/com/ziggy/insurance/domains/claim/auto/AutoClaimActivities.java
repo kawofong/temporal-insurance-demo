@@ -18,8 +18,4 @@ public interface AutoClaimActivities {
     // Dispatches the assigned adjuster to the field; the assessment arrives later via Signal.
     @ActivityMethod
     void dispatchFieldAdjuster(String claimId, String adjusterId);
-
-    // claimId is the idempotency key so retries after a crash never double-pay.
-    @ActivityMethod
-    String processPayment(String claimId, String policyHolderId, int amount);
 }

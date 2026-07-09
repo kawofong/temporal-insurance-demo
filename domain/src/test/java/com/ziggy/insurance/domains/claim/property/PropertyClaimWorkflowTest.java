@@ -13,6 +13,10 @@ import com.ziggy.insurance.domains.notifications.NotificationActivitiesImpl;
 import com.ziggy.insurance.domains.notifications.NotificationServiceImpl;
 import com.ziggy.insurance.domains.notifications.NotificationWorkflowImpl;
 import com.ziggy.insurance.domains.notifications.NotificationsNexus;
+import com.ziggy.insurance.domains.payment.PaymentActivitiesImpl;
+import com.ziggy.insurance.domains.payment.PaymentNexus;
+import com.ziggy.insurance.domains.payment.PaymentServiceImpl;
+import com.ziggy.insurance.domains.payment.PaymentWorkflowImpl;
 import com.ziggy.insurance.domains.policy.TaskQueues;
 import io.temporal.api.enums.v1.IndexedValueType;
 import io.temporal.client.WorkflowClient;
@@ -57,6 +61,18 @@ class PropertyClaimWorkflowTest {
         env.createNexusEndpoint(NotificationsNexus.ENDPOINT, NotificationsNexus.TASK_QUEUE);
     }
 
+    // Stands up the payment domain the claim workflow calls over Nexus to disburse the payout: a
+    // worker hosting the Nexus service handler plus the workflow and activity it starts on the
+    // payment task queue, and the endpoint the claim workflow's stub targets. Without this the
+    // workflow's processPayment call would hang at PAYMENT_PROCESSING.
+    private void registerPayment(TestWorkflowEnvironment env) {
+        Worker paymentWorker = env.newWorker(PaymentNexus.TASK_QUEUE);
+        paymentWorker.registerNexusServiceImplementation(new PaymentServiceImpl());
+        paymentWorker.registerWorkflowImplementationTypes(PaymentWorkflowImpl.class);
+        paymentWorker.registerActivitiesImplementations(new PaymentActivitiesImpl());
+        env.createNexusEndpoint(PaymentNexus.ENDPOINT, PaymentNexus.TASK_QUEUE);
+    }
+
     @Test
     void submittedStateObservableBeforeFirstWorkflowTask() {
         try (TestWorkflowEnvironment env = TestWorkflowEnvironment.newInstance()) {
@@ -65,6 +81,7 @@ class PropertyClaimWorkflowTest {
             worker.registerWorkflowImplementationTypes(PropertyClaimWorkflowImpl.class);
             worker.registerActivitiesImplementations(new PropertyClaimActivitiesImpl());
             registerNotifications(env);
+            registerPayment(env);
             env.start();
 
             PropertyClaimWorkflow wf = env.getWorkflowClient().newWorkflowStub(
@@ -85,6 +102,7 @@ class PropertyClaimWorkflowTest {
             worker.registerWorkflowImplementationTypes(PropertyClaimWorkflowImpl.class);
             worker.registerActivitiesImplementations(new PropertyClaimActivitiesImpl());
             registerNotifications(env);
+            registerPayment(env);
             env.start();
 
             PropertyClaimWorkflow wf = env.getWorkflowClient().newWorkflowStub(
@@ -123,6 +141,7 @@ class PropertyClaimWorkflowTest {
             worker.registerWorkflowImplementationTypes(PropertyClaimWorkflowImpl.class);
             worker.registerActivitiesImplementations(new PropertyClaimActivitiesImpl());
             registerNotifications(env);
+            registerPayment(env);
             env.start();
 
             PropertyClaimWorkflow wf = env.getWorkflowClient().newWorkflowStub(

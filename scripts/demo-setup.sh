@@ -1,28 +1,27 @@
 #!/usr/bin/env bash
-# Sets up the demo environment: creates the notifications Nexus endpoint (idempotent) and,
+# Sets up the demo environment: creates the cross-domain Nexus endpoints (idempotent) and,
 # if the API is reachable, triggers the demo data seed endpoint. Safe to re-run.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Config — override via environment variables when targeting a non-local setup.
-NEXUS_ENDPOINT="${NEXUS_ENDPOINT:-notifications-ep}"
 NEXUS_NAMESPACE="${NEXUS_NAMESPACE:-default}"
-NEXUS_TASK_QUEUE="${NEXUS_TASK_QUEUE:-notifications-task-queue}"
-NEXUS_DESCRIPTION_FILE="${NEXUS_DESCRIPTION_FILE:-${SCRIPT_DIR}/nexus-notifications-ep.md}"
 API_BASE_URL="${API_BASE_URL:-http://localhost:8080}"
 API_CONNECT_TIMEOUT="${API_CONNECT_TIMEOUT:-2}"
 
-# Creates the Nexus endpoint that routes claim -> notifications calls. Tolerates an existing
-# endpoint so the task is idempotent, but surfaces any other failure (e.g. server unreachable).
+# Creates one Nexus endpoint (name, target task queue, description file) that routes a
+# cross-domain call. Tolerates an existing endpoint so the task is idempotent, but surfaces any
+# other failure (e.g. server unreachable).
 create_nexus_endpoint() {
-    echo "==> Creating Nexus endpoint '${NEXUS_ENDPOINT}' -> ${NEXUS_NAMESPACE}/${NEXUS_TASK_QUEUE}"
+    local name="$1" task_queue="$2" description_file="$3"
+    echo "==> Creating Nexus endpoint '${name}' -> ${NEXUS_NAMESPACE}/${task_queue}"
     local output
     if output=$(temporal operator nexus endpoint create \
-        --name "${NEXUS_ENDPOINT}" \
+        --name "${name}" \
         --target-namespace "${NEXUS_NAMESPACE}" \
-        --target-task-queue "${NEXUS_TASK_QUEUE}" \
-        --description-file "${NEXUS_DESCRIPTION_FILE}" 2>&1); then
+        --target-task-queue "${task_queue}" \
+        --description-file "${description_file}" 2>&1); then
         echo "    created."
     elif grep -qiE "already (exists|registered)" <<<"${output}"; then
         echo "    already exists — skipping."
@@ -31,6 +30,15 @@ create_nexus_endpoint() {
         echo "${output}" >&2
         return 1
     fi
+}
+
+# Creates every Nexus endpoint the demo relies on. Each domain that exposes a Nexus service
+# (notifications, payment) gets one endpoint routing callers to its task queue.
+create_nexus_endpoints() {
+    create_nexus_endpoint "notifications-ep" "notifications-task-queue" \
+        "${SCRIPT_DIR}/nexus-notifications-ep.md"
+    create_nexus_endpoint "payment-ep" "payment-task-queue" \
+        "${SCRIPT_DIR}/nexus-payment-ep.md"
 }
 
 # Seeds demo data via the API, but only if the API is reachable — the demo can be set up
@@ -54,6 +62,6 @@ seed_demo_data() {
     fi
 }
 
-create_nexus_endpoint
+create_nexus_endpoints
 seed_demo_data
 echo "==> Demo environment ready."
