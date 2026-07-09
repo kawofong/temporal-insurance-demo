@@ -3,8 +3,8 @@
 package com.ziggy.insurance.domains.claim.property;
 
 import com.ziggy.insurance.domains.claim.models.CoverageVerificationResult;
+import com.ziggy.insurance.domains.common.DemoLatency;
 import io.temporal.spring.boot.ActivityImpl;
-import java.util.concurrent.ThreadLocalRandom;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -46,10 +46,6 @@ public class PropertyClaimActivitiesImpl implements PropertyClaimActivities {
     // Sleeps a random 500-1000 ms to mimic downstream system latency. Demo only — this makes
     // activity execution visible in the timeline; a real activity would do actual work instead.
     private static void simulateProcessingDelay() {
-        try {
-            Thread.sleep(ThreadLocalRandom.current().nextInt(500, 1001));
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-        }
+        DemoLatency.simulate(500, 1001);
     }
 }

@@ -6,9 +6,9 @@ package com.ziggy.insurance.domains.notifications;
 import com.ziggy.insurance.domains.notifications.models.ChannelDelivery;
 import com.ziggy.insurance.domains.notifications.models.NotificationChannel;
 import com.ziggy.insurance.domains.notifications.models.NotificationRequest;
+import com.ziggy.insurance.domains.common.DemoLatency;
 import io.temporal.spring.boot.ActivityImpl;
 import java.util.List;
-import java.util.concurrent.ThreadLocalRandom;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -37,10 +37,6 @@ public class NotificationActivitiesImpl implements NotificationActivities {
     // Sleeps a random 100-500 ms to mimic downstream provider latency. Demo only — this makes
     // the parallel per-channel dispatch visible in the timeline.
     private static void simulateProcessingDelay() {
-        try {
-            Thread.sleep(ThreadLocalRandom.current().nextInt(100, 500));
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-        }
+        DemoLatency.simulate(100, 500);
     }
 }

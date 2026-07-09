@@ -3,9 +3,9 @@
 // integration. The gateway is deliberately flaky so the demo shows Temporal retrying to success.
 package com.ziggy.insurance.domains.payment;
 
+import com.ziggy.insurance.domains.common.DemoLatency;
 import io.temporal.activity.Activity;
 import io.temporal.spring.boot.ActivityImpl;
-import java.util.concurrent.ThreadLocalRandom;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -31,10 +31,6 @@ public class PaymentActivitiesImpl implements PaymentActivities {
     // Sleeps a random 100-500 ms to mimic downstream gateway latency. Demo only — this makes
     // activity execution visible in the timeline; a real activity would do actual work instead.
     private static void simulateProcessingDelay() {
-        try {
-            Thread.sleep(ThreadLocalRandom.current().nextInt(100, 500));
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-        }
+        DemoLatency.simulate(100, 500);
     }
 }

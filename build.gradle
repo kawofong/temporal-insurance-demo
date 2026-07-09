@@ -26,6 +26,10 @@ subprojects {
 
     tasks.withType(Test).configureEach {
         useJUnitPlatform()
+        maxParallelForks = Math.max(1, Runtime.runtime.availableProcessors().intdiv(2))
+        maxHeapSize = '1g'
+        // Skip the artificial demo latency baked into activities so tests don't wait in real time.
+        systemProperty 'insurance.simulateDelays', 'false'
         testLogging {
             events 'passed', 'skipped', 'failed'
             showStandardStreams = false

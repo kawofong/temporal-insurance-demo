@@ -187,7 +187,7 @@ class AutoPolicyControllerTest {
                 .content(body))
             .andExpect(status().isAccepted());
 
-        Thread.sleep(500);
+        awaitPolicy(POLICY_ID, s -> !s.getListedDrivers().isEmpty());
         mockMvc.perform(get(BASE_URL + "/" + POLICY_ID))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.listedDrivers[0].driverId").value("D-001"));
@@ -199,7 +199,7 @@ class AutoPolicyControllerTest {
         mockMvc.perform(delete(BASE_URL + "/" + POLICY_ID + "/drivers/D-001"))
             .andExpect(status().isAccepted());
 
-        Thread.sleep(500);
+        awaitPolicy(POLICY_ID, s -> s.getListedDrivers().isEmpty());
         mockMvc.perform(get(BASE_URL + "/" + POLICY_ID))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.listedDrivers").isEmpty());
@@ -215,7 +215,7 @@ class AutoPolicyControllerTest {
                     """))
             .andExpect(status().isAccepted());
 
-        Thread.sleep(500);
+        awaitPolicy(POLICY_ID, s -> "SUSPENDED".equals(s.getStatus().name()));
         mockMvc.perform(get(BASE_URL + "/" + POLICY_ID))
             .andExpect(jsonPath("$.status").value("SUSPENDED"));
     }
@@ -226,7 +226,7 @@ class AutoPolicyControllerTest {
         mockMvc.perform(post(BASE_URL + "/" + POLICY_ID + "/reactivate"))
             .andExpect(status().isAccepted());
 
-        Thread.sleep(500);
+        awaitPolicy(POLICY_ID, s -> "ACTIVE".equals(s.getStatus().name()));
         mockMvc.perform(get(BASE_URL + "/" + POLICY_ID))
             .andExpect(jsonPath("$.status").value("ACTIVE"));
     }
@@ -237,7 +237,7 @@ class AutoPolicyControllerTest {
         mockMvc.perform(post(BASE_URL + "/" + POLICY_ID + "/initiate-renewal"))
             .andExpect(status().isAccepted());
 
-        Thread.sleep(500);
+        awaitPolicy(POLICY_ID, s -> "RENEWAL_PENDING".equals(s.getStatus().name()));
         mockMvc.perform(get(BASE_URL + "/" + POLICY_ID))
             .andExpect(jsonPath("$.status").value("RENEWAL_PENDING"));
     }
@@ -248,7 +248,7 @@ class AutoPolicyControllerTest {
         mockMvc.perform(post(BASE_URL + "/" + POLICY_ID + "/complete-renewal"))
             .andExpect(status().isAccepted());
 
-        Thread.sleep(500);
+        awaitPolicy(POLICY_ID, s -> "ACTIVE".equals(s.getStatus().name()));
         mockMvc.perform(get(BASE_URL + "/" + POLICY_ID))
             .andExpect(jsonPath("$.status").value("ACTIVE"));
     }
@@ -291,7 +291,7 @@ class AutoPolicyControllerTest {
                     """))
             .andExpect(status().isAccepted());
 
-        Thread.sleep(500);
+        awaitPolicy(genPolicyId, s -> !s.getListedDrivers().isEmpty());
         mockMvc.perform(get(BASE_URL + "/" + genPolicyId))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.listedDrivers[0].name").value("Morgan"))
@@ -304,5 +304,22 @@ class AutoPolicyControllerTest {
         mockMvc.perform(get(BASE_URL + "/DOES-NOT-EXIST"))
             .andExpect(status().isNotFound())
             .andExpect(jsonPath("$.error").value("NOT_FOUND"));
+    }
+
+    // Polls the policy until the signalled state is observable, so async signals settle without a
+    // fixed real-time wait. Returns once the condition holds or the deadline passes; the caller's
+    // andExpect assertions then report a clean failure if the state never converged.
+    private void awaitPolicy(String policyId, java.util.function.Predicate<AutoPolicyState> condition)
+            throws Exception {
+        long deadline = System.currentTimeMillis() + 5_000;
+        while (System.currentTimeMillis() < deadline) {
+            MvcResult result = mockMvc.perform(get(BASE_URL + "/" + policyId)).andReturn();
+            AutoPolicyState state = objectMapper.readValue(
+                result.getResponse().getContentAsString(), AutoPolicyState.class);
+            if (condition.test(state)) {
+                return;
+            }
+            Thread.sleep(25);
+        }
     }
 }

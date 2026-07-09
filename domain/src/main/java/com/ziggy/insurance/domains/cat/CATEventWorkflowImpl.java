@@ -25,7 +25,13 @@ import org.slf4j.Logger;
 @WorkflowImpl(taskQueues = "claim-task-queue")
 public class CATEventWorkflowImpl implements CATEventWorkflow {
 
-    private static final int BATCH_SIZE = 500;
+    private static final int DEFAULT_BATCH_SIZE = 500;
+
+    // Number of child claims fanned out per run before continue-as-new. Owned by the workflow
+    // (deliberately not a workflow input); package-private and non-final only so tests can shrink
+    // it to exercise the continue-as-new hop without fanning out hundreds of children.
+    static int batchSize = DEFAULT_BATCH_SIZE;
+
     private static final Logger logger = Workflow.getLogger(CATEventWorkflowImpl.class);
 
     private CATEventState state;
@@ -45,7 +51,7 @@ public class CATEventWorkflowImpl implements CATEventWorkflow {
             state.setStatus(CATEventLifecycle.SPAWNING);
 
             int start = input.nextClaimIndex();
-            int end = Math.min(start + BATCH_SIZE, input.totalClaimsToGenerate());
+            int end = Math.min(start + batchSize, input.totalClaimsToGenerate());
 
             // Fire every child in the batch without blocking, collecting a start promise
             // for each. We then block only until every child has durably STARTED — never
@@ -82,7 +88,7 @@ public class CATEventWorkflowImpl implements CATEventWorkflow {
             state.setTotalClaimsOpened(input.totalClaimsOpened() + (end - start));
 
             // Batch-iterator checkpoint: hand the next offset + carried counter to a
-            // fresh run. This bounds each run's history to ~BATCH_SIZE child-start events.
+            // fresh run. This bounds each run's history to ~batchSize child-start events.
             CATEventInput next = new CATEventInput(
                 input.catEventId(), input.eventName(), input.affectedRegion(),
                 input.totalClaimsToGenerate(), end, state.getTotalClaimsOpened(),

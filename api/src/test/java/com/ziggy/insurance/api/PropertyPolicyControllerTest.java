@@ -168,9 +168,7 @@ class PropertyPolicyControllerTest {
                     """))
             .andExpect(status().isAccepted());
 
-        Thread.sleep(500);
-        mockMvc.perform(get(BASE_URL + "/" + POLICY_ID))
-            .andExpect(jsonPath("$.status").value("SUSPENDED"));
+        awaitStatus("SUSPENDED");
     }
 
     @Test
@@ -178,10 +176,7 @@ class PropertyPolicyControllerTest {
     void reactivatePolicy() throws Exception {
         mockMvc.perform(post(BASE_URL + "/" + POLICY_ID + "/reactivate"))
             .andExpect(status().isAccepted());
-
-        Thread.sleep(500);
-        mockMvc.perform(get(BASE_URL + "/" + POLICY_ID))
-            .andExpect(jsonPath("$.status").value("ACTIVE"));
+        awaitStatus("ACTIVE");
     }
 
     @Test
@@ -190,16 +185,11 @@ class PropertyPolicyControllerTest {
         mockMvc.perform(post(BASE_URL + "/" + POLICY_ID + "/initiate-renewal"))
             .andExpect(status().isAccepted());
 
-        Thread.sleep(500);
-        mockMvc.perform(get(BASE_URL + "/" + POLICY_ID))
-            .andExpect(jsonPath("$.status").value("RENEWAL_PENDING"));
+        awaitStatus("RENEWAL_PENDING");
 
         mockMvc.perform(post(BASE_URL + "/" + POLICY_ID + "/complete-renewal"))
             .andExpect(status().isAccepted());
-
-        Thread.sleep(500);
-        mockMvc.perform(get(BASE_URL + "/" + POLICY_ID))
-            .andExpect(jsonPath("$.status").value("ACTIVE"));
+        awaitStatus("ACTIVE");
     }
 
     @Test
@@ -249,5 +239,24 @@ class PropertyPolicyControllerTest {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.lossPayees[0].name").value("Generated Bank"))
             .andExpect(jsonPath("$.lossPayees[0].lossPayeeId").isNotEmpty());
+    }
+
+    // Polls the policy status until the signalled transition is observable, so async signals settle
+    // without a fixed real-time wait. Returns once the status matches or rethrows the assertion
+    // error at the deadline for a clean failure.
+    private void awaitStatus(String expectedStatus) throws Exception {
+        long deadline = System.currentTimeMillis() + 5_000;
+        while (true) {
+            try {
+                mockMvc.perform(get(BASE_URL + "/" + POLICY_ID))
+                    .andExpect(jsonPath("$.status").value(expectedStatus));
+                return;
+            } catch (AssertionError e) {
+                if (System.currentTimeMillis() >= deadline) {
+                    throw e;
+                }
+                Thread.sleep(25);
+            }
+        }
     }
 }

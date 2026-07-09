@@ -30,9 +30,10 @@ import org.junit.jupiter.api.Test;
 
 class CATEventWorkflowTest {
 
-    // Total crosses the BATCH_SIZE = 500 boundary (500 + 100) so the fan-out exercises one
-    // continue-as-new hop. Kept modest so the child fan-out doesn't strain the shared test JVM.
-    private static final int TOTAL_CLAIMS = 600;
+    // Total crosses the (test-shrunk) batch-size boundary so the fan-out exercises the
+    // continue-as-new hop, while keeping the child count small so it doesn't strain the test JVM.
+    private static final int TOTAL_CLAIMS = 50;
+    private static final int TEST_BATCH_SIZE = 20;
 
     // Fast, delay-free stand-in so the child claims don't run the real 500-1000 ms mock sleeps.
     static class FastPropertyClaimActivities implements PropertyClaimActivities {
@@ -89,6 +90,10 @@ class CATEventWorkflowTest {
 
     @Test
     void fanOutFilesAllClaimsAcrossContinueAsNewThenCompletes() {
+        // Shrink the workflow's batch size so TOTAL_CLAIMS still crosses the boundary and drives
+        // continue-as-new, without fanning out hundreds of children.
+        int originalBatchSize = CATEventWorkflowImpl.batchSize;
+        CATEventWorkflowImpl.batchSize = TEST_BATCH_SIZE;
         try (TestWorkflowEnvironment env = TestWorkflowEnvironment.newInstance()) {
             registerSearchAttributes(env);
             Worker worker = env.newWorker(TaskQueues.CLAIM_TASK_QUEUE);
@@ -126,6 +131,8 @@ class CATEventWorkflowTest {
                 PropertyClaimWorkflow.class, "claim/property/" + catEventId + "-0");
             PropertyClaimState childState = child.getClaim();
             assertThat(childState.getCatEventId()).isEqualTo(catEventId);
+        } finally {
+            CATEventWorkflowImpl.batchSize = originalBatchSize;
         }
     }
 
