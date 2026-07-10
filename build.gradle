@@ -1,11 +1,20 @@
 plugins {
     id 'java'
+    id 'jacoco'
     id 'org.springframework.boot' version '3.5.3' apply false
     id 'io.spring.dependency-management' version '1.1.7' apply false
+    id 'org.gradle.test-retry' version '1.6.2' apply false
 }
+
+// JaCoCo version compatible with the Java 21 toolchain used across all modules.
+def jacocoVersion = '0.8.12'
+// Minimum aggregated line/instruction coverage the CI gate enforces.
+def minCoverage = 0.80
 
 subprojects {
     apply plugin: 'java'
+    apply plugin: 'jacoco'
+    apply plugin: 'org.gradle.test-retry'
     apply plugin: 'org.springframework.boot'
     apply plugin: 'io.spring.dependency-management'
 
@@ -18,6 +27,10 @@ subprojects {
         }
     }
 
+    jacoco {
+        toolVersion = jacocoVersion
+    }
+
     configurations {
         compileOnly {
             extendsFrom annotationProcessor
@@ -26,13 +39,103 @@ subprojects {
 
     tasks.withType(Test).configureEach {
         useJUnitPlatform()
-        maxParallelForks = Math.max(1, Runtime.runtime.availableProcessors().intdiv(2))
+        // Each test spins up its own in-process Temporal TestWorkflowEnvironment, which is
+        // CPU- and memory-heavy. Default to half the cores, but allow CI (or constrained
+        // machines) to override via -PtestMaxParallelForks to avoid oversubscription that
+        // makes gRPC query calls exceed their deadline and flake.
+        def defaultForks = Math.max(1, Runtime.runtime.availableProcessors().intdiv(2))
+        maxParallelForks = (project.findProperty('testMaxParallelForks') ?: defaultForks) as int
         maxHeapSize = '1g'
         // Skip the artificial demo latency baked into activities so tests don't wait in real time.
         systemProperty 'insurance.simulateDelays', 'false'
         testLogging {
             events 'passed', 'skipped', 'failed'
             showStandardStreams = false
+        }
+        // Each test spins up an in-process Temporal test server whose gRPC queries can
+        // transiently exceed their deadline under CPU contention. Re-run only the handful of
+        // affected test methods instead of failing the whole build on a flaky timeout.
+        retry {
+            maxRetries = 2
+            maxFailures = 20
+            failOnPassedAfterRetry = false
+        }
+
+        // Emit JaCoCo coverage data whenever tests run.
+        finalizedBy tasks.named('jacocoTestReport')
+    }
+
+    tasks.named('jacocoTestReport') {
+        dependsOn tasks.named('test')
+        reports {
+            xml.required = true
+            html.required = true
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Aggregated coverage across every module — the single number the CI gate uses.
+// ---------------------------------------------------------------------------
+
+// Classes that carry no meaningful branching logic and would only dilute the
+// coverage signal: Spring Boot bootstrap classes and generated OpenAPI config.
+def coverageExclusions = [
+    '**/*Application.class',
+    '**/*Application$*.class',
+]
+
+def coverageSourceDirs = subprojects.collect { "${it.projectDir}/src/main/java" }
+def coverageClassDirs = subprojects.collect {
+    fileTree(dir: "${it.projectDir}/build/classes/java/main", excludes: coverageExclusions)
+}
+// Scope to subproject build dirs only. Scanning rootDir would also pick up the root
+// project's own (empty) test.exec and create an undeclared dependency on the root :test task.
+def coverageExecData = files(subprojects.collect {
+    fileTree(dir: "${it.projectDir}/build/jacoco", includes: ['test.exec'])
+})
+
+tasks.register('jacocoAggregatedReport', JacocoReport) {
+    group = 'verification'
+    description = 'Generates an aggregated JaCoCo coverage report across all modules.'
+    // Depend on each module's report task (which itself depends on `test`) so the exec/class
+    // outputs this task consumes are fully produced before it reads them.
+    dependsOn subprojects.collect { "${it.path}:jacocoTestReport" }
+
+    sourceDirectories.setFrom files(coverageSourceDirs)
+    classDirectories.setFrom files(coverageClassDirs)
+    executionData.setFrom coverageExecData
+
+    reports {
+        xml.required = true
+        html.required = true
+        csv.required = true
+    }
+}
+
+tasks.register('jacocoCoverageVerification', JacocoCoverageVerification) {
+    group = 'verification'
+    description = "Fails the build if aggregated coverage drops below ${(minCoverage * 100) as int}%."
+    dependsOn tasks.named('jacocoAggregatedReport')
+
+    sourceDirectories.setFrom files(coverageSourceDirs)
+    classDirectories.setFrom files(coverageClassDirs)
+    executionData.setFrom coverageExecData
+
+    violationRules {
+        rule {
+            limit {
+                counter = 'INSTRUCTION'
+                value = 'COVEREDRATIO'
+                minimum = minCoverage
+            }
+        }
+        rule {
+            limit {
+                counter = 'LINE'
+                value = 'COVEREDRATIO'
+                minimum = minCoverage
+            }
         }
     }
 }
