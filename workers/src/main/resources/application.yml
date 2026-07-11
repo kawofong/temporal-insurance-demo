@@ -10,12 +10,40 @@ spring:
     workers-auto-discovery:
       packages:
         - com.ziggy.insurance.domains
+    # Capacity applied to every worker so each task queue can run up to 1000
+    # concurrent workflow tasks and 1000 concurrent activity tasks. Poller counts
+    # are raised above the SDK defaults (2 workflow / 5 activity) so poll
+    # throughput can keep the executor slots saturated at this concurrency.
     workers:
       - task-queue: policy-task-queue
+        capacity:
+          max-concurrent-workflow-task-executors: 500
+          max-concurrent-activity-executors: 500
+          max-concurrent-local-activity-executors: 500
+          max-concurrent-workflow-task-pollers: 20
+          max-concurrent-activity-task-pollers: 20
       - task-queue: claim-task-queue
-      # Hosts the notifications domain's Nexus service handler. The Nexus endpoint
-      # 'notifications-ep' must be created on the server pointing here (see AGENTS.md).
+        capacity:
+          max-concurrent-workflow-task-executors: 500
+          max-concurrent-activity-executors: 500
+          max-concurrent-local-activity-executors: 500
+          max-concurrent-workflow-task-pollers: 20
+          max-concurrent-activity-task-pollers: 20
       - task-queue: notifications-task-queue
-      # Hosts the payment domain's Nexus service handler. The Nexus endpoint
-      # 'payment-ep' must be created on the server pointing here (see AGENTS.md).
+        capacity:
+          max-concurrent-workflow-task-executors: 500
+          max-concurrent-activity-executors: 500
+          max-concurrent-local-activity-executors: 500
+          max-concurrent-nexus-task-executors: 500
+          max-concurrent-workflow-task-pollers: 20
+          max-concurrent-activity-task-pollers: 20
+          max-concurrent-nexus-task-pollers: 20
       - task-queue: payment-task-queue
+        capacity:
+          max-concurrent-workflow-task-executors: 500
+          max-concurrent-activity-executors: 500
+          max-concurrent-local-activity-executors: 500
+          max-concurrent-nexus-task-executors: 500
+          max-concurrent-workflow-task-pollers: 20
+          max-concurrent-activity-task-pollers: 20
+          max-concurrent-nexus-task-pollers: 20
