@@ -251,6 +251,74 @@
   margin-top: 0;
 }
 
+/* Catastrophe event tab — id preview, lifecycle badge, and progress bar */
+.cat-id-preview {
+  font-size: 9px;
+  line-height: 1.7;
+  color: var(--text-muted);
+  margin: -8px 0 4px;
+}
+
+.cat-id-preview code {
+  color: var(--purple-glow);
+  word-break: break-all;
+}
+
+.cat-progress {
+  border: 2px solid var(--border-pixel);
+  background: var(--bg-card);
+  padding: 16px;
+  margin-bottom: 20px;
+}
+
+.cat-progress-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.cat-progress-header strong {
+  color: var(--purple-glow);
+  font-size: 10px;
+}
+
+.cat-lifecycle-badge {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 8px;
+  line-height: 1.4;
+  color: var(--purple-glow);
+  border: 2px solid var(--purple-light);
+  padding: 6px 8px;
+  white-space: nowrap;
+}
+
+.cat-lifecycle-badge--terminal {
+  color: var(--text-primary);
+  border-color: var(--text-primary);
+  background: var(--purple-dim);
+}
+
+.cat-progress-bar {
+  height: 18px;
+  margin: 14px 0 8px;
+  border: 2px solid var(--border-pixel);
+  background: var(--bg-panel);
+  overflow: hidden;
+}
+
+.cat-progress-fill {
+  height: 100%;
+  background: var(--purple-primary);
+  transition: width 0.3s;
+}
+
+.cat-progress-caption {
+  font-size: 9px;
+  color: var(--text-muted);
+}
+
 /* Stack the tab rail on top of the content on narrow screens */
 @media (max-width: 640px) {
   .admin-modal-body {

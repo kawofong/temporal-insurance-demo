@@ -10,15 +10,32 @@ import {
   listClaims,
   submitDamageAssessment,
 } from "./claimHelpers";
+import {
+  CAT_POLL_INTERVAL_MS,
+  catProgressPercent,
+  declareCatEvent,
+  fetchCatEventStatus,
+  formatCatStatus,
+  generateCatEventId,
+  isTerminalCatStatus,
+} from "./catHelpers";
 import "./Portal.css";
 import "./AdminPanel.css";
 
 const TABS = [
   { id: "field-adjuster", label: "Field Adjuster", icon: "🔧" },
   { id: "adjuster", label: "Claims Adjuster", icon: "✅" },
+  { id: "cat-event", label: "Catastrophe Event", icon: "🌪️" },
 ];
 
 const DEMO_ADJUSTER_ID = "adj-sarah";
+
+// Prefilled so the operator can declare with one click during a demo (see spec §9).
+const CAT_DEMO_DEFAULTS = {
+  eventName: "Butte County Wildfire",
+  affectedRegion: "Northern California",
+  totalClaimsToGenerate: "5",
+};
 
 function useClaimQueue(status) {
   const [claims, setClaims] = useState([]);
@@ -53,6 +70,55 @@ function useClaimQueue(status) {
   }
 
   return { claims, isLoading, error, refresh };
+}
+
+// Polls the CAT event workflow so declared-event progress appears live. Cancels the
+// interval on unmount, when the id changes, and once the event reaches a terminal state.
+// A failed poll is non-fatal: it surfaces an error but keeps the last known status and
+// keeps trying (mirrors useClaimQueue's AbortController handling).
+function useCatEventProgress(catEventId) {
+  const [status, setStatus] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (!catEventId) {
+      setStatus(null);
+      setIsLoading(false);
+      setError("");
+      return undefined;
+    }
+
+    const controller = new AbortController();
+    let intervalId;
+    setStatus(null);
+    setIsLoading(true);
+
+    async function poll() {
+      try {
+        const next = await fetchCatEventStatus(catEventId, { signal: controller.signal });
+        setStatus(next);
+        setError("");
+        if (isTerminalCatStatus(next.status)) clearInterval(intervalId);
+      } catch (pollError) {
+        if (pollError.name !== "AbortError") {
+          setError(pollError.message || "Unable to load CAT event progress.");
+        }
+      } finally {
+        if (!controller.signal.aborted) setIsLoading(false);
+      }
+    }
+
+    poll();
+    intervalId = setInterval(poll, CAT_POLL_INTERVAL_MS);
+
+    return () => {
+      controller.abort();
+      clearInterval(intervalId);
+    };
+  }, [catEventId]);
+
+  return { status, isLoading, error };
 }
 
 // Shared loading/error/empty/list rendering for both adjuster queues.
@@ -323,6 +389,195 @@ function AdjusterPanel() {
   );
 }
 
+function CATEventPanel() {
+  const [eventName, setEventName] = useState(CAT_DEMO_DEFAULTS.eventName);
+  const [affectedRegion, setAffectedRegion] = useState(CAT_DEMO_DEFAULTS.affectedRegion);
+  const [totalClaimsToGenerate, setTotalClaimsToGenerate] = useState(
+    CAT_DEMO_DEFAULTS.totalClaimsToGenerate,
+  );
+  // Captured at submit time so the progress header renders before the first poll returns.
+  const [declaredEvent, setDeclaredEvent] = useState(null);
+  const [isBusy, setIsBusy] = useState(false);
+  const [formError, setFormError] = useState("");
+
+  const activeEventId = declaredEvent?.catEventId ?? null;
+  const { status, error: pollError } = useCatEventProgress(activeEventId);
+
+  // Live preview of the id that will be declared; recomputed as the operator edits the name.
+  const idPreview = generateCatEventId(eventName, new Date());
+
+  async function declare(event) {
+    event.preventDefault();
+    setFormError("");
+
+    const trimmedName = eventName.trim();
+    const trimmedRegion = affectedRegion.trim();
+    const total = Number(totalClaimsToGenerate);
+
+    if (!trimmedName || !trimmedRegion) {
+      setFormError("Event name and affected region are required.");
+      return;
+    }
+    if (!Number.isInteger(total) || total < 1) {
+      setFormError("Total claims to generate must be a whole number of at least 1.");
+      return;
+    }
+
+    // The id is generated at submit time from the (trimmed) name and today's date.
+    const catEventId = generateCatEventId(trimmedName, new Date());
+    setIsBusy(true);
+    try {
+      await declareCatEvent({
+        catEventId,
+        eventName: trimmedName,
+        affectedRegion: trimmedRegion,
+        totalClaimsToGenerate: total,
+      });
+      setDeclaredEvent({
+        catEventId,
+        eventName: trimmedName,
+        affectedRegion: trimmedRegion,
+        totalClaimsExpected: total,
+      });
+    } catch (declareError) {
+      // Keep the form values so the operator can tweak the name (→ new id) and retry.
+      setFormError(declareError.message || "Unable to declare the CAT event.");
+    } finally {
+      setIsBusy(false);
+    }
+  }
+
+  function declareAnother() {
+    setDeclaredEvent(null);
+    setEventName(CAT_DEMO_DEFAULTS.eventName);
+    setAffectedRegion(CAT_DEMO_DEFAULTS.affectedRegion);
+    setTotalClaimsToGenerate(CAT_DEMO_DEFAULTS.totalClaimsToGenerate);
+    setFormError("");
+  }
+
+  if (activeEventId) {
+    const header = status ?? declaredEvent;
+    const percent = catProgressPercent(status);
+    const isComplete = isTerminalCatStatus(status?.status);
+    const opened = status?.totalClaimsOpened ?? 0;
+    const expected = status?.totalClaimsExpected ?? declaredEvent.totalClaimsExpected;
+
+    return (
+      <div className="admin-tab-panel">
+        <h3>🌪️ Catastrophe Event</h3>
+        <p>
+          Tracking the declared event as the workflow fans out synthetic first-notice-of-loss
+          property claims across the affected region.
+        </p>
+
+        <div className="cat-progress">
+          <div className="cat-progress-header">
+            <strong>{header.eventName}</strong>
+            <span
+              className={`cat-lifecycle-badge${
+                isComplete ? " cat-lifecycle-badge--terminal" : ""
+              }`}
+            >
+              {formatCatStatus(status?.status ?? "DECLARED")}
+            </span>
+          </div>
+          <div className="admin-queue-item-meta">
+            <span>{header.catEventId}</span>
+            <span>{header.affectedRegion}</span>
+          </div>
+
+          <div
+            className="cat-progress-bar"
+            role="progressbar"
+            aria-valuenow={percent}
+            aria-valuemin={0}
+            aria-valuemax={100}
+          >
+            <div className="cat-progress-fill" style={{ width: `${percent}%` }} />
+          </div>
+          <div className="cat-progress-caption">
+            {opened} / {expected} claims filed ({percent}%)
+          </div>
+        </div>
+
+        {pollError && (
+          <div className="policy-modal-notice policy-modal-notice--error">{pollError}</div>
+        )}
+
+        {isComplete && (
+          <>
+            <div className="policy-modal-notice">
+              CAT event completed — all {expected} synthetic claims filed.
+            </div>
+            <div className="policy-form-actions">
+              <button type="button" onClick={declareAnother}>
+                Declare another event
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="admin-tab-panel">
+      <h3>🌪️ Catastrophe Event</h3>
+      <p>
+        Stand-in for the ops console that declares a regional catastrophe and mass-generates
+        first-notice-of-loss property claims. Fill in the event, declare it, and watch the
+        claims fan out in real time.
+      </p>
+
+      <form className="policy-action-form" onSubmit={declare}>
+        <label>
+          Event Name
+          <input
+            type="text"
+            value={eventName}
+            onChange={(event) => setEventName(event.target.value)}
+            required
+          />
+        </label>
+        <div className="cat-id-preview">
+          Event ID: <code>{idPreview}</code>
+        </div>
+        <label>
+          Affected Region
+          <input
+            type="text"
+            value={affectedRegion}
+            onChange={(event) => setAffectedRegion(event.target.value)}
+            required
+          />
+        </label>
+        <label>
+          Total Claims to Generate
+          <input
+            type="number"
+            min="1"
+            value={totalClaimsToGenerate}
+            onChange={(event) => setTotalClaimsToGenerate(event.target.value)}
+            required
+          />
+        </label>
+        {formError && <div className="policy-modal-notice policy-modal-notice--error">{formError}</div>}
+        <div className="policy-form-actions">
+          <button type="submit" disabled={isBusy}>
+            {isBusy ? "Declaring..." : "Declare CAT Event"}
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
+const TAB_PANELS = {
+  "field-adjuster": FieldAdjusterPanel,
+  adjuster: AdjusterPanel,
+  "cat-event": CATEventPanel,
+};
+
 function AdminPanel() {
   const [isOpen, setIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("field-adjuster");
@@ -377,7 +632,10 @@ function AdminPanel() {
               </nav>
 
               <div className="admin-tab-content">
-                {activeTab === "field-adjuster" ? <FieldAdjusterPanel /> : <AdjusterPanel />}
+                {(() => {
+                  const ActivePanel = TAB_PANELS[activeTab] ?? FieldAdjusterPanel;
+                  return <ActivePanel />;
+                })()}
               </div>
             </div>
           </section>
