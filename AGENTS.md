@@ -75,3 +75,15 @@ mise run test
 - `TestWorkflowEnvironment` does **not** implement `ListWorkflowExecutions` — any
   visibility/list flow cannot be integration-tested there. Unit-test the query builder and
   verify list flows end-to-end against a real dev server.
+- **Temporal Cloud:** `MISE_ENV=cloud` (VS Code "Start Cloud" task) loads `mise.cloud.toml`,
+  which activates the Spring `cloud` profile (`application-cloud.yml` in `api/` and `workers/`:
+  API key + `enable-https`) and reads the gitignored `.env.cloud` (`TEMPORAL_TARGET`,
+  `TEMPORAL_NAMESPACE`, `TEMPORAL_API_KEY`; template `.env.cloud.example`).
+- **Namespace provisioning uses different CLI families per environment**, driven by
+  `scripts/demo-setup.sh --target local|cloud`. Local (`mise run demo:setup`) uses
+  `temporal operator search-attribute create` / `operator nexus endpoint create` against the dev
+  server (with `--tls=false`, since the dev server is plaintext). Cloud
+  (`mise run temporal:cloud:setup`, which sources `.env.cloud`) uses
+  `temporal cloud namespace search-attribute create` / `cloud nexus endpoint create` with
+  `--api-key`, `--idempotent`, and — for Nexus — `--allow-namespace` (the caller namespace). The
+  Cloud task requires the `temporal` Cloud CLI extension.

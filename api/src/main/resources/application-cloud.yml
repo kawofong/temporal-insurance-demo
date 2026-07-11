@@ -1,0 +1,11 @@
+# Temporal Cloud connection overrides for the API, active when SPRING_PROFILES_ACTIVE=cloud.
+# Values are supplied by the gitignored .env.cloud file, loaded by mise (MISE_ENV=cloud).
+spring:
+  temporal:
+    connection:
+      # No defaults: startup fails loudly if .env.cloud is missing rather than silently
+      # falling back to the local dev server.
+      target: ${TEMPORAL_TARGET}
+      api-key: ${TEMPORAL_API_KEY}
+      enable-https: true
+    namespace: ${TEMPORAL_NAMESPACE}

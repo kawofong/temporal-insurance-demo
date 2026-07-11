@@ -9,8 +9,21 @@ temporal = "1.30.5"
 description = "Run a local Temporal dev server"
 run = "temporal server start-dev --search-attribute policyHolderId=Keyword --search-attribute policyStatus=Keyword --search-attribute policyId=Keyword --search-attribute claimStatus=Keyword"
 
+[tasks."temporal:cloud:setup"]
+description = "Provision a Temporal Cloud namespace: register the search attributes and create the Nexus endpoints (reads credentials from .env.cloud, idempotent)"
+run = """
+if [ ! -f .env.cloud ]; then
+  echo "Error: .env.cloud not found. Copy .env.cloud.example to .env.cloud and fill it in." >&2
+  exit 1
+fi
+set -a
+. ./.env.cloud
+set +a
+./scripts/demo-setup.sh --target cloud --setup-namespace-only
+"""
+
 [tasks."demo:setup"]
-description = "Set up the demo environment: create the notifications and payment Nexus endpoints and seed demo data (idempotent)"
+description = "Set up the demo environment: create Nexus endpoints and seed demo data (idempotent)"
 run = "./scripts/demo-setup.sh"
 
 [tasks."temporal:worker"]

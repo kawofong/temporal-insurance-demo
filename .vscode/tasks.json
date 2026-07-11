@@ -134,6 +134,98 @@
                 "kind": "build",
                 "isDefault": true
             }
+        },
+        {
+            "label": "worker (cloud)",
+            "type": "shell",
+            "command": "source ~/.zshrc || mise run temporal:worker",
+            "options": {
+                "cwd": "${workspaceFolder}",
+                "env": {
+                    "MISE_ENV": "cloud"
+                }
+            },
+            "isBackground": true,
+            "problemMatcher": [
+                {
+                    "pattern": [
+                        {
+                            "regexp": "^(NOMATCH)(.*)$",
+                            "file": 1,
+                            "message": 2,
+                            "kind": "file"
+                        }
+                    ],
+                    "background": {
+                        "activeOnStart": true,
+                        "beginsPattern": "Starting WorkersApplication",
+                        "endsPattern": "Started WorkersApplication"
+                    }
+                }
+            ],
+            "presentation": {
+                "group": "cloud",
+                "reveal": "always",
+                "panel": "new"
+            }
+        },
+        {
+            "label": "api (cloud)",
+            "type": "shell",
+            "command": "source ~/.zshrc || mise run api",
+            "options": {
+                "cwd": "${workspaceFolder}",
+                "env": {
+                    "MISE_ENV": "cloud"
+                }
+            },
+            "isBackground": true,
+            "problemMatcher": [
+                {
+                    "pattern": [
+                        {
+                            "regexp": "^(NOMATCH)(.*)$",
+                            "file": 1,
+                            "message": 2,
+                            "kind": "file"
+                        }
+                    ],
+                    "background": {
+                        "activeOnStart": true,
+                        "beginsPattern": "Starting ApiApplication",
+                        "endsPattern": "Started ApiApplication in "
+                    }
+                }
+            ],
+            "presentation": {
+                "group": "cloud",
+                "reveal": "always",
+                "panel": "new"
+            }
+        },
+        {
+            "label": "demo-setup (cloud)",
+            "type": "shell",
+            "command": "source ~/.zshrc 2>/dev/null || true; until curl -s -o /dev/null --connect-timeout 1 http://localhost:8080; do echo 'Waiting for API...'; sleep 2; done; mise run demo:setup",
+            "options": {
+                "cwd": "${workspaceFolder}",
+                "env": {
+                    "MISE_ENV": "cloud"
+                }
+            },
+            "dependsOn": ["api (cloud)"],
+            "problemMatcher": [],
+            "presentation": {
+                "group": "cloud",
+                "reveal": "always",
+                "panel": "new"
+            }
+        },
+        {
+            "label": "Start Cloud",
+            "dependsOn": ["api (cloud)", "ui", "worker (cloud)", "demo-setup (cloud)"],
+            "problemMatcher": [],
+            "group": "build"
         }
     ]
 }

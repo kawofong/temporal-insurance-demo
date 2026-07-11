@@ -1,0 +1,10 @@
+# Temporal Cloud overlay for mise, loaded when MISE_ENV=cloud.
+[env]
+# Activate the Spring `cloud` profile so application-cloud.yml (API key + HTTPS) is used.
+SPRING_PROFILES_ACTIVE = "cloud"
+
+# The Cloud namespace is pre-provisioned, so demo setup skips creating Nexus endpoints.
+SKIP_NEXUS_SETUP = "true"
+
+# Load the Temporal Cloud endpoint + API key from a gitignored dotenv file.
+_.file = ".env.cloud"
