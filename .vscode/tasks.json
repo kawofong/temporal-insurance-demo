@@ -41,7 +41,23 @@
             },
             "isBackground": true,
             "dependsOn": ["temporal-server"],
-            "problemMatcher": [],
+            "problemMatcher": [
+                {
+                    "pattern": [
+                        {
+                            "regexp": "^(NOMATCH)(.*)$",
+                            "file": 1,
+                            "message": 2,
+                            "kind": "file"
+                        }
+                    ],
+                    "background": {
+                        "activeOnStart": true,
+                        "beginsPattern": "Starting WorkersApplication",
+                        "endsPattern": "Started WorkersApplication"
+                    }
+                }
+            ],
             "presentation": {
                 "group": "temporal",
                 "reveal": "always",
@@ -75,7 +91,7 @@
                 }
             ],
             "presentation": {
-                "group": "demo",
+                "group": "app",
                 "reveal": "always",
                 "panel": "new"
             }
@@ -90,7 +106,7 @@
             "isBackground": true,
             "problemMatcher": [],
             "presentation": {
-                "group": "demo",
+                "group": "app",
                 "reveal": "always",
                 "panel": "new"
             }
