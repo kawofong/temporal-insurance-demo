@@ -118,7 +118,6 @@
             "options": {
                 "cwd": "${workspaceFolder}"
             },
-            "dependsOn": ["temporal-server", "api"],
             "problemMatcher": [],
             "presentation": {
                 "group": "demo",
@@ -213,7 +212,6 @@
                     "MISE_ENV": "cloud"
                 }
             },
-            "dependsOn": ["api (cloud)"],
             "problemMatcher": [],
             "presentation": {
                 "group": "cloud",
