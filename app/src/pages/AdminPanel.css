@@ -190,6 +190,23 @@
   cursor: pointer;
 }
 
+/* Auto/property tag on each queue item; sits between the claim id and the action button. */
+.admin-claim-type-badge {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 8px;
+  padding: 4px 8px;
+  border: 2px solid var(--purple-light);
+  margin-right: auto;
+}
+
+.admin-claim-type-badge--property {
+  color: var(--text-primary);
+}
+
+.admin-claim-type-badge--auto {
+  color: var(--text-muted);
+}
+
 .admin-queue-item p {
   font-size: 9px;
   line-height: 1.7;
@@ -204,6 +221,25 @@
   flex-wrap: wrap;
   font-size: 9px;
   color: var(--text-muted);
+}
+
+/* Pages in the next batch of queued claims; shown while a cursor remains. */
+.admin-load-more {
+  display: block;
+  width: 100%;
+  margin-top: 16px;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 9px;
+  color: var(--purple-glow);
+  background: transparent;
+  border: 2px solid var(--purple-light);
+  padding: 12px;
+  cursor: pointer;
+}
+
+.admin-load-more:disabled {
+  cursor: default;
+  opacity: 0.6;
 }
 
 /* Claim action popup — a dialog stacked above the admin panel (z-index 70 > 60) so an

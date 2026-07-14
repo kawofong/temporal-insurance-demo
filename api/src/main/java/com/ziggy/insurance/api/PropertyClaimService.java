@@ -11,6 +11,7 @@ import com.ziggy.insurance.domains.claim.property.PropertyClaimState;
 import com.ziggy.insurance.domains.claim.property.PropertyClaimWorkflow;
 import com.ziggy.insurance.domains.claim.search.ClaimSearchAttributes;
 import com.ziggy.insurance.domains.policy.TaskQueues;
+import com.google.protobuf.ByteString;
 import io.temporal.api.workflow.v1.WorkflowExecutionInfo;
 import io.temporal.api.workflowservice.v1.ListWorkflowExecutionsRequest;
 import io.temporal.api.workflowservice.v1.ListWorkflowExecutionsResponse;
@@ -91,22 +92,30 @@ public class PropertyClaimService {
             .submitDamageAssessment(assessment);
     }
 
+    // Pages through the visibility results: only the current page is hydrated via Query,
+    // so a large backlog no longer stalls the caller. nextPageToken is null when done.
     public PropertyClaimListResponse listClaims(
-            String policyHolderId, String policyId, String status) {
+            String policyHolderId, String policyId, String status, Integer pageSize, String pageToken) {
         String namespace = workflowClient.getOptions().getNamespace();
-        ListWorkflowExecutionsRequest request = ListWorkflowExecutionsRequest.newBuilder()
+        ListWorkflowExecutionsRequest.Builder request = ListWorkflowExecutionsRequest.newBuilder()
             .setNamespace(namespace)
-            .setQuery(buildClaimListQuery(policyHolderId, policyId, status))
-            .build();
+            .setQuery(buildClaimListQuery(policyHolderId, policyId, status));
+        if (pageSize != null && pageSize > 0) {
+            request.setPageSize(pageSize);
+        }
+        ByteString token = PageTokens.decode(pageToken);
+        if (!token.isEmpty()) {
+            request.setNextPageToken(token);
+        }
         ListWorkflowExecutionsResponse response = workflowClient.getWorkflowServiceStubs()
-            .blockingStub().listWorkflowExecutions(request);
+            .blockingStub().listWorkflowExecutions(request.build());
 
         List<PropertyClaimState> claims = new ArrayList<>();
         for (WorkflowExecutionInfo info : response.getExecutionsList()) {
             String wfId = info.getExecution().getWorkflowId();
             claims.add(workflowClient.newWorkflowStub(PropertyClaimWorkflow.class, wfId).getClaim());
         }
-        return new PropertyClaimListResponse(claims);
+        return new PropertyClaimListResponse(claims, PageTokens.encode(response.getNextPageToken()));
     }
 
     // Pure, unit-testable (the test server does not implement ListWorkflowExecutions).

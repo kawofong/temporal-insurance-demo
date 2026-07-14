@@ -54,7 +54,7 @@ public class PropertyClaimWorkflowImpl implements PropertyClaimWorkflow {
             .setEndpoint(PaymentNexus.ENDPOINT)
             .setOperationOptions(
                 NexusOperationOptions.newBuilder()
-                    .setScheduleToCloseTimeout(Duration.ofMinutes(5))
+                    .setStartToCloseTimeout(Duration.ofSeconds(10))
                     .build())
             .build());
 

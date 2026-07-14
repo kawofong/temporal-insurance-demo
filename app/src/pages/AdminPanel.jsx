@@ -7,7 +7,7 @@ import {
   SIGNAL_REFRESH_DELAY_MS,
   approveClaim,
   formatCurrency,
-  listClaims,
+  listAdjusterQueue,
   submitDamageAssessment,
 } from "./claimHelpers";
 import {
@@ -40,8 +40,13 @@ const CAT_DEMO_DEFAULTS = {
 function useClaimQueue(status) {
   const [claims, setClaims] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [error, setError] = useState("");
   const [refreshToken, setRefreshToken] = useState(0);
+  // Per-type cursors: undefined = not loaded yet, a string = more pages remain,
+  // null = that type is exhausted.
+  const [autoPageToken, setAutoPageToken] = useState(undefined);
+  const [propertyPageToken, setPropertyPageToken] = useState(undefined);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -49,8 +54,10 @@ function useClaimQueue(status) {
     async function loadQueue() {
       setIsLoading(true);
       try {
-        const results = await listClaims({ status }, { signal: controller.signal });
-        setClaims(results);
+        const page = await listAdjusterQueue(status, {}, { signal: controller.signal });
+        setClaims(page.claims);
+        setAutoPageToken(page.autoPageToken);
+        setPropertyPageToken(page.propertyPageToken);
         setError("");
       } catch (queueError) {
         if (queueError.name !== "AbortError") {
@@ -65,11 +72,28 @@ function useClaimQueue(status) {
     return () => controller.abort();
   }, [status, refreshToken]);
 
+  async function loadMore() {
+    setIsLoadingMore(true);
+    try {
+      const page = await listAdjusterQueue(status, { autoPageToken, propertyPageToken });
+      setClaims((previous) => [...previous, ...page.claims]);
+      setAutoPageToken(page.autoPageToken);
+      setPropertyPageToken(page.propertyPageToken);
+      setError("");
+    } catch (queueError) {
+      setError(queueError.message || "Unable to load more claims.");
+    } finally {
+      setIsLoadingMore(false);
+    }
+  }
+
   function refresh() {
     setRefreshToken((token) => token + 1);
   }
 
-  return { claims, isLoading, error, refresh };
+  const hasMore = Boolean(autoPageToken) || Boolean(propertyPageToken);
+
+  return { claims, isLoading, isLoadingMore, error, hasMore, loadMore, refresh };
 }
 
 // Polls the CAT event workflow so declared-event progress appears live. Cancels the
@@ -122,19 +146,29 @@ function useCatEventProgress(catEventId) {
 }
 
 // Shared loading/error/empty/list rendering for both adjuster queues.
-function ClaimQueueList({ isLoading, error, claims, renderItem }) {
+function ClaimQueueList({ isLoading, error, claims, renderItem, hasMore, onLoadMore, isLoadingMore }) {
   if (isLoading) return <div className="admin-placeholder">Loading queue...</div>;
-  if (error) return <div className="admin-placeholder">{error}</div>;
+  // Only surface the error as a full-panel placeholder on the initial load. A failed
+  // "load more" keeps the already-loaded claims visible with the error shown inline.
+  if (error && claims.length === 0) return <div className="admin-placeholder">{error}</div>;
   if (claims.length === 0) return <div className="admin-placeholder">No claims waiting.</div>;
 
   return (
-    <ul className="admin-queue">
-      {claims.map((claim) => (
-        <li className="admin-queue-item" key={claim.claimId}>
-          {renderItem(claim)}
-        </li>
-      ))}
-    </ul>
+    <>
+      <ul className="admin-queue">
+        {claims.map((claim) => (
+          <li className="admin-queue-item" key={claim.claimId}>
+            {renderItem(claim)}
+          </li>
+        ))}
+      </ul>
+      {error && <div className="admin-placeholder">{error}</div>}
+      {hasMore && (
+        <button type="button" className="admin-load-more" onClick={onLoadMore} disabled={isLoadingMore}>
+          {isLoadingMore ? "Loading..." : "Load more"}
+        </button>
+      )}
+    </>
   );
 }
 
@@ -170,9 +204,20 @@ function ClaimActionModal({ title, onClose, children }) {
   );
 }
 
+// Badge distinguishing auto from property claims in the shared adjuster queues.
+function ClaimTypeBadge({ claimType }) {
+  const isProperty = claimType === "property";
+  return (
+    <span className={`admin-claim-type-badge admin-claim-type-badge--${isProperty ? "property" : "auto"}`}>
+      {isProperty ? "🏠 Property" : "🚗 Auto"}
+    </span>
+  );
+}
+
 function FieldAdjusterPanel() {
-  const { claims, isLoading, error, refresh } = useClaimQueue("PENDING_DAMAGE_ASSESSMENT");
-  const [selectedClaimId, setSelectedClaimId] = useState(null);
+  const { claims, isLoading, isLoadingMore, error, hasMore, loadMore, refresh } =
+    useClaimQueue("PENDING_DAMAGE_ASSESSMENT");
+  const [selectedClaim, setSelectedClaim] = useState(null);
   const [summary, setSummary] = useState("");
   const [estimatedCost, setEstimatedCost] = useState("");
   const [isBusy, setIsBusy] = useState(false);
@@ -180,7 +225,7 @@ function FieldAdjusterPanel() {
   const [formError, setFormError] = useState("");
 
   function selectClaim(claim) {
-    setSelectedClaimId(claim.claimId);
+    setSelectedClaim(claim);
     setSummary("");
     setEstimatedCost("");
     setNotice("");
@@ -192,12 +237,13 @@ function FieldAdjusterPanel() {
     setIsBusy(true);
     setFormError("");
     try {
-      await submitDamageAssessment(selectedClaimId, {
-        summary,
-        estimatedCost: Number(estimatedCost) || 0,
-      });
-      setNotice(`Damage assessment submitted for ${selectedClaimId}.`);
-      setSelectedClaimId(null);
+      await submitDamageAssessment(
+        selectedClaim.claimId,
+        { summary, estimatedCost: Number(estimatedCost) || 0 },
+        selectedClaim.claimType,
+      );
+      setNotice(`Damage assessment submitted for ${selectedClaim.claimId}.`);
+      setSelectedClaim(null);
       window.setTimeout(refresh, SIGNAL_REFRESH_DELAY_MS);
     } catch (submitError) {
       setFormError(submitError.message || "Unable to submit damage assessment.");
@@ -220,27 +266,40 @@ function FieldAdjusterPanel() {
         isLoading={isLoading}
         error={error}
         claims={claims}
+        hasMore={hasMore}
+        onLoadMore={loadMore}
+        isLoadingMore={isLoadingMore}
         renderItem={(claim) => (
           <>
             <div className="admin-queue-item-header">
               <strong>{claim.claimId}</strong>
+              <ClaimTypeBadge claimType={claim.claimType} />
               <button type="button" onClick={() => selectClaim(claim)}>
                 Assess Damage
               </button>
             </div>
             <p>{claim.incidentDescription}</p>
             <div className="admin-queue-item-meta">
-              <span>
-                {claim.vehicleYear} {claim.vehicleMake} {claim.vehicleModel}
-              </span>
-              <span>{claim.incidentLocation}</span>
+              {claim.claimType === "property" ? (
+                <span>{claim.propertyAddress}</span>
+              ) : (
+                <>
+                  <span>
+                    {claim.vehicleYear} {claim.vehicleMake} {claim.vehicleModel}
+                  </span>
+                  <span>{claim.incidentLocation}</span>
+                </>
+              )}
             </div>
           </>
         )}
       />
 
-      {selectedClaimId && (
-        <ClaimActionModal title={`Damage Assessment — ${selectedClaimId}`} onClose={() => setSelectedClaimId(null)}>
+      {selectedClaim && (
+        <ClaimActionModal
+          title={`Damage Assessment — ${selectedClaim.claimId}`}
+          onClose={() => setSelectedClaim(null)}
+        >
           <form className="policy-action-form" onSubmit={submitAssessment}>
             <label>
               Summary
@@ -261,7 +320,7 @@ function FieldAdjusterPanel() {
               <button
                 className="policy-form-keep"
                 type="button"
-                onClick={() => setSelectedClaimId(null)}
+                onClick={() => setSelectedClaim(null)}
                 disabled={isBusy}
               >
                 Cancel
@@ -278,7 +337,8 @@ function FieldAdjusterPanel() {
 }
 
 function AdjusterPanel() {
-  const { claims, isLoading, error, refresh } = useClaimQueue("PENDING_APPROVAL");
+  const { claims, isLoading, isLoadingMore, error, hasMore, loadMore, refresh } =
+    useClaimQueue("PENDING_APPROVAL");
   const [selectedClaim, setSelectedClaim] = useState(null);
   const [approvedPayoutAmount, setApprovedPayoutAmount] = useState("");
   const [notes, setNotes] = useState("");
@@ -302,11 +362,11 @@ function AdjusterPanel() {
     setIsBusy(true);
     setFormError("");
     try {
-      await approveClaim(selectedClaim.claimId, {
-        adjusterId,
-        approvedPayoutAmount: Number(approvedPayoutAmount) || 0,
-        notes,
-      });
+      await approveClaim(
+        selectedClaim.claimId,
+        { adjusterId, approvedPayoutAmount: Number(approvedPayoutAmount) || 0, notes },
+        selectedClaim.claimType,
+      );
       setNotice(`Approval submitted for ${selectedClaim.claimId}.`);
       setSelectedClaim(null);
       window.setTimeout(refresh, SIGNAL_REFRESH_DELAY_MS);
@@ -331,10 +391,14 @@ function AdjusterPanel() {
         isLoading={isLoading}
         error={error}
         claims={claims}
+        hasMore={hasMore}
+        onLoadMore={loadMore}
+        isLoadingMore={isLoadingMore}
         renderItem={(claim) => (
           <>
             <div className="admin-queue-item-header">
               <strong>{claim.claimId}</strong>
+              <ClaimTypeBadge claimType={claim.claimType} />
               <button type="button" onClick={() => selectClaim(claim)}>
                 Review
               </button>

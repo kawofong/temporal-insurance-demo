@@ -54,7 +54,9 @@ public class AutoClaimController {
     public AutoClaimListResponse list(
             @RequestParam(required = false) String policyHolderId,
             @RequestParam(required = false) String policyId,
-            @RequestParam(required = false) String status) {
-        return claimService.listClaims(policyHolderId, policyId, status);
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) Integer pageSize,
+            @RequestParam(required = false) String pageToken) {
+        return claimService.listClaims(policyHolderId, policyId, status, pageSize, pageToken);
     }
 }

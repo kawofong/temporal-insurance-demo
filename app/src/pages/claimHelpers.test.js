@@ -1,13 +1,17 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  ADJUSTER_QUEUE_PAGE_SIZE,
   CLAIM_ENDPOINT,
+  CLAIM_ENDPOINTS,
   approveClaim,
   claimStatusClass,
   fetchClaim,
   formatClaimStatus,
   formatCurrency,
   isTerminalClaimStatus,
+  listAdjusterQueue,
   listClaims,
+  listClaimsPage,
   submitDamageAssessment,
   submitFnol,
 } from "./claimHelpers";
@@ -158,5 +162,182 @@ describe("claimHelpers fetch client", () => {
     global.fetch.mockResolvedValue(jsonResponse({ error: "NOT_FOUND", message: "Claim not found" }, false, 404));
 
     await expect(fetchClaim("DOES-NOT-EXIST")).rejects.toThrow("Claim not found");
+  });
+});
+
+describe("per-type endpoint routing", () => {
+  beforeEach(() => {
+    global.fetch = vi.fn();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("defaults to the auto endpoint when no claim type is given", async () => {
+    global.fetch.mockResolvedValue(jsonResponse({ claims: [] }));
+
+    await listClaims({ status: "PENDING_APPROVAL" });
+
+    expect(global.fetch).toHaveBeenCalledWith(
+      `${CLAIM_ENDPOINTS.auto}?status=PENDING_APPROVAL`,
+      undefined,
+    );
+  });
+
+  it("routes listClaims to the property endpoint for property claims", async () => {
+    global.fetch.mockResolvedValue(jsonResponse({ claims: [] }));
+
+    await listClaims({ status: "PENDING_APPROVAL" }, undefined, "property");
+
+    expect(global.fetch).toHaveBeenCalledWith(
+      `${CLAIM_ENDPOINTS.property}?status=PENDING_APPROVAL`,
+      undefined,
+    );
+  });
+
+  it("routes fetchClaim to the property endpoint for property claims", async () => {
+    global.fetch.mockResolvedValue(jsonResponse({ claimId: "CLM-ABC" }));
+
+    await fetchClaim("CLM-ABC", undefined, "property");
+
+    expect(global.fetch).toHaveBeenCalledWith(`${CLAIM_ENDPOINTS.property}/CLM-ABC`, undefined);
+  });
+
+  it("routes submitDamageAssessment to the property endpoint for property claims", async () => {
+    global.fetch.mockResolvedValue(jsonResponse({}, true, 202));
+
+    await submitDamageAssessment("CLM-ABC", { summary: "Roof damage", estimatedCost: 8000 }, "property");
+
+    expect(global.fetch).toHaveBeenCalledWith(
+      `${CLAIM_ENDPOINTS.property}/CLM-ABC/damage-assessment`,
+      expect.objectContaining({ method: "POST" }),
+    );
+  });
+
+  it("routes approveClaim to the property endpoint for property claims", async () => {
+    global.fetch.mockResolvedValue(jsonResponse({}, true, 202));
+
+    await approveClaim("CLM-ABC", { adjusterId: "adj-sarah", approvedPayoutAmount: 8000, notes: "" }, "property");
+
+    expect(global.fetch).toHaveBeenCalledWith(
+      `${CLAIM_ENDPOINTS.property}/CLM-ABC/approve`,
+      expect.objectContaining({ method: "POST" }),
+    );
+  });
+});
+
+describe("listClaimsPage", () => {
+  beforeEach(() => {
+    global.fetch = vi.fn();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("returns the claims and the next page token", async () => {
+    global.fetch.mockResolvedValue(jsonResponse({ claims: [{ claimId: "CLM-1" }], nextPageToken: "TOK-2" }));
+
+    const result = await listClaimsPage({ status: "PENDING_APPROVAL", pageSize: 100 });
+
+    expect(global.fetch).toHaveBeenCalledWith(
+      `${CLAIM_ENDPOINTS.auto}?status=PENDING_APPROVAL&pageSize=100`,
+      undefined,
+    );
+    expect(result).toEqual({ claims: [{ claimId: "CLM-1" }], nextPageToken: "TOK-2" });
+  });
+
+  it("forwards the page token and routes by claim type", async () => {
+    global.fetch.mockResolvedValue(jsonResponse({ claims: [], nextPageToken: null }));
+
+    const result = await listClaimsPage({ status: "PENDING_APPROVAL", pageSize: 100, pageToken: "TOK-2" }, undefined, "property");
+
+    expect(global.fetch).toHaveBeenCalledWith(
+      `${CLAIM_ENDPOINTS.property}?status=PENDING_APPROVAL&pageSize=100&pageToken=TOK-2`,
+      undefined,
+    );
+    expect(result).toEqual({ claims: [], nextPageToken: null });
+  });
+
+  it("normalizes a missing next page token to null", async () => {
+    global.fetch.mockResolvedValue(jsonResponse({ claims: [{ claimId: "CLM-1" }] }));
+
+    const result = await listClaimsPage({ status: "PENDING_APPROVAL" });
+
+    expect(result.nextPageToken).toBeNull();
+  });
+});
+
+describe("listAdjusterQueue", () => {
+  beforeEach(() => {
+    global.fetch = vi.fn();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("requests one page of each type at the default page size, tagged and with per-type tokens", async () => {
+    global.fetch.mockImplementation((url) => {
+      if (url.startsWith(CLAIM_ENDPOINTS.auto)) {
+        return Promise.resolve(jsonResponse({ claims: [{ claimId: "AUTO-1" }], nextPageToken: "AUTO-TOK" }));
+      }
+      return Promise.resolve(jsonResponse({ claims: [{ claimId: "PROP-1" }], nextPageToken: null }));
+    });
+
+    const result = await listAdjusterQueue("PENDING_APPROVAL");
+
+    expect(global.fetch).toHaveBeenCalledWith(
+      `${CLAIM_ENDPOINTS.auto}?status=PENDING_APPROVAL&pageSize=${ADJUSTER_QUEUE_PAGE_SIZE}`,
+      undefined,
+    );
+    expect(global.fetch).toHaveBeenCalledWith(
+      `${CLAIM_ENDPOINTS.property}?status=PENDING_APPROVAL&pageSize=${ADJUSTER_QUEUE_PAGE_SIZE}`,
+      undefined,
+    );
+    expect(result).toEqual({
+      claims: [
+        { claimId: "AUTO-1", claimType: "auto" },
+        { claimId: "PROP-1", claimType: "property" },
+      ],
+      autoPageToken: "AUTO-TOK",
+      propertyPageToken: null,
+    });
+  });
+
+  it("fetches the next page with the given token and skips an exhausted (null-token) source", async () => {
+    global.fetch.mockResolvedValue(jsonResponse({ claims: [{ claimId: "AUTO-2" }], nextPageToken: null }));
+
+    const result = await listAdjusterQueue("PENDING_APPROVAL", {
+      autoPageToken: "AUTO-TOK",
+      propertyPageToken: null,
+    });
+
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+    expect(global.fetch).toHaveBeenCalledWith(
+      `${CLAIM_ENDPOINTS.auto}?status=PENDING_APPROVAL&pageSize=${ADJUSTER_QUEUE_PAGE_SIZE}&pageToken=AUTO-TOK`,
+      undefined,
+    );
+    expect(global.fetch).not.toHaveBeenCalledWith(
+      expect.stringContaining(CLAIM_ENDPOINTS.property),
+      expect.anything(),
+    );
+    expect(result).toEqual({
+      claims: [{ claimId: "AUTO-2", claimType: "auto" }],
+      autoPageToken: null,
+      propertyPageToken: null,
+    });
+  });
+
+  it("surfaces the error when one endpoint fails", async () => {
+    global.fetch.mockImplementation((url) => {
+      if (url.startsWith(CLAIM_ENDPOINTS.auto)) {
+        return Promise.resolve(jsonResponse({ claims: [] }));
+      }
+      return Promise.resolve(jsonResponse({ error: "BOOM", message: "Property queue unavailable" }, false, 500));
+    });
+
+    await expect(listAdjusterQueue("PENDING_APPROVAL")).rejects.toThrow("Property queue unavailable");
   });
 });
