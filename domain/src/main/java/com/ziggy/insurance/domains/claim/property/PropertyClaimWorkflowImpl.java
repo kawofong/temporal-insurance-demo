@@ -38,10 +38,6 @@ public class PropertyClaimWorkflowImpl implements PropertyClaimWorkflow {
         NotificationService.class,
         NexusServiceOptions.newBuilder()
             .setEndpoint(NotificationsNexus.ENDPOINT)
-            .setOperationOptions(
-                NexusOperationOptions.newBuilder()
-                    .setStartToCloseTimeout(Duration.ofSeconds(2))
-                    .build())
             .build());
 
     // Payments also live in their own domain; the claim triggers a payout across the Nexus
@@ -52,10 +48,6 @@ public class PropertyClaimWorkflowImpl implements PropertyClaimWorkflow {
         PaymentService.class,
         NexusServiceOptions.newBuilder()
             .setEndpoint(PaymentNexus.ENDPOINT)
-            .setOperationOptions(
-                NexusOperationOptions.newBuilder()
-                    .setStartToCloseTimeout(Duration.ofSeconds(10))
-                    .build())
             .build());
 
     // @WorkflowInit guarantees state is set before any Query (e.g. an early GET) or Signal runs.
