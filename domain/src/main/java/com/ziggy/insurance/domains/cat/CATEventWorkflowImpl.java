@@ -11,6 +11,7 @@ import com.ziggy.insurance.domains.claim.property.PropertyClaimWorkflow;
 import com.ziggy.insurance.domains.policy.TaskQueues;
 import io.temporal.api.common.v1.WorkflowExecution;
 import io.temporal.api.enums.v1.ParentClosePolicy;
+import io.temporal.common.Priority;
 import io.temporal.failure.ChildWorkflowFailure;
 import io.temporal.spring.boot.WorkflowImpl;
 import io.temporal.workflow.Async;
@@ -26,6 +27,11 @@ import org.slf4j.Logger;
 public class CATEventWorkflowImpl implements CATEventWorkflow {
 
     private static final int DEFAULT_BATCH_SIZE = 500;
+
+    // Child property claims run at Temporal's default priority key (3, the middle of the [1, 5]
+    // range) so they sit below the priority-1 CAT event parent on the shared claim task queue.
+    // Set explicitly rather than relying on the default so the intent is visible.
+    private static final int CHILD_CLAIM_PRIORITY_KEY = 3;
 
     // Number of child claims fanned out per run before continue-as-new. Owned by the workflow
     // (deliberately not a workflow input); package-private and non-final only so tests can shrink
@@ -66,6 +72,9 @@ public class CATEventWorkflowImpl implements CATEventWorkflow {
                         .setWorkflowId("claim/property/" + input.catEventId() + "-" + i)
                         .setTaskQueue(TaskQueues.CLAIM_TASK_QUEUE)
                         .setParentClosePolicy(ParentClosePolicy.PARENT_CLOSE_POLICY_ABANDON)
+                        .setPriority(Priority.newBuilder()
+                            .setPriorityKey(CHILD_CLAIM_PRIORITY_KEY)
+                            .build())
                         // Each claim index yields a unique workflow id; the default start
                         // behavior already fails on a running-duplicate id, so a re-declared
                         // batch never silently double-files a claim. (WorkflowIdConflictPolicy
