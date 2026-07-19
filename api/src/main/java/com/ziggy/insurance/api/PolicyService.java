@@ -273,9 +273,9 @@ public class PolicyService {
         return listPolicies(policyHolderId);
     }
 
-    // Aggregates policy workflows of every execution status from Temporal visibility, optionally
-    // scoped to a single policyholder. Workflow ids are classified by type prefix, then each
-    // policy's current state is fetched via query.
+    // Aggregates running policy workflows from Temporal visibility, optionally scoped to a single
+    // policyholder. Workflow ids are classified by type prefix, then each policy's current state
+    // is fetched via query.
     private PolicyListResponse listPolicies(String policyHolderId) {
         List<AutoPolicyState> autoPolicies = new ArrayList<>();
         List<PropertyPolicyState> propertyPolicies = new ArrayList<>();
@@ -311,14 +311,17 @@ public class PolicyService {
         return new PolicyListResponse(autoPolicies, propertyPolicies, commercialPolicies);
     }
 
-    // Builds the Temporal visibility query for policy workflows of every execution status,
-    // scoped by workflow type to the three policy entity workflows. When a policyholder is
-    // supplied, results are further scoped to that holder via the policyHolderId search attribute.
+    // Builds the Temporal visibility query for running policy workflows, scoped by workflow type
+    // to the three policy entity workflows. The ExecutionStatus filter ensures a workflow id with
+    // multiple runs in visibility (e.g. a closed run plus a re-created running run) yields a single
+    // entry rather than one per run. When a policyholder is supplied, results are further scoped to
+    // that holder via the policyHolderId search attribute.
     static String buildPolicyListQuery(String policyHolderId) {
         String query = "WorkflowType IN ('"
             + AutoPolicyWorkflow.class.getSimpleName() + "', '"
             + PropertyPolicyWorkflow.class.getSimpleName() + "', '"
-            + CommercialPolicyWorkflow.class.getSimpleName() + "')";
+            + CommercialPolicyWorkflow.class.getSimpleName() + "')"
+            + " AND ExecutionStatus = 'Running'";
         if (hasText(policyHolderId)) {
             query += " AND " + PolicySearchAttributes.POLICY_HOLDER_ID
                 + " = '" + policyHolderId + "'";

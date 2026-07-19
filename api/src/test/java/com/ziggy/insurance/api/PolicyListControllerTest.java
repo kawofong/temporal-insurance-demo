@@ -11,13 +11,13 @@ import org.junit.jupiter.api.Test;
 class PolicyListControllerTest {
 
     private static final String BASE_QUERY =
-        "WorkflowType IN ('AutoPolicyWorkflow', 'PropertyPolicyWorkflow', 'CommercialPolicyWorkflow')";
+        "WorkflowType IN ('AutoPolicyWorkflow', 'PropertyPolicyWorkflow', 'CommercialPolicyWorkflow')"
+        + " AND ExecutionStatus = 'Running'";
 
     @Test
-    void queryWithoutHolderScopesByPolicyWorkflowTypeAndIgnoresExecutionStatus() {
+    void queryWithoutHolderScopesByPolicyWorkflowTypeAndRunningStatus() {
         String query = PolicyService.buildPolicyListQuery(null);
         assertThat(query).isEqualTo(BASE_QUERY);
-        assertThat(query).doesNotContain("ExecutionStatus");
     }
 
     @Test
@@ -31,6 +31,5 @@ class PolicyListControllerTest {
         String query = PolicyService.buildPolicyListQuery("jake-from-state-farm");
         assertThat(query).isEqualTo(
             BASE_QUERY + " AND policyHolderId = 'jake-from-state-farm'");
-        assertThat(query).doesNotContain("ExecutionStatus");
     }
 }
