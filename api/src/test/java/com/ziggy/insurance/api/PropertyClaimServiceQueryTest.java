@@ -10,7 +10,8 @@ import org.junit.jupiter.api.Test;
 
 class PropertyClaimServiceQueryTest {
 
-    private static final String BASE_QUERY = "WorkflowType = 'PropertyClaimWorkflow'";
+    private static final String BASE_QUERY =
+        "WorkflowType = 'PropertyClaimWorkflow' AND ExecutionStatus != 'Terminated'";
 
     @Test
     void queryWithoutFiltersScopesByClaimWorkflowType() {

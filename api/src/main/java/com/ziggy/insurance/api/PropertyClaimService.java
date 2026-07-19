@@ -12,20 +12,28 @@ import com.ziggy.insurance.domains.claim.property.PropertyClaimWorkflow;
 import com.ziggy.insurance.domains.claim.search.ClaimSearchAttributes;
 import com.ziggy.insurance.domains.policy.TaskQueues;
 import com.google.protobuf.ByteString;
+import io.temporal.api.common.v1.Payload;
 import io.temporal.api.workflow.v1.WorkflowExecutionInfo;
 import io.temporal.api.workflowservice.v1.ListWorkflowExecutionsRequest;
 import io.temporal.api.workflowservice.v1.ListWorkflowExecutionsResponse;
 import io.temporal.client.WorkflowClient;
 import io.temporal.client.WorkflowOptions;
+import io.temporal.client.WorkflowQueryException;
+import io.temporal.common.converter.GlobalDataConverter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 @Service
 public class PropertyClaimService {
 
     private static final String TASK_QUEUE = TaskQueues.CLAIM_TASK_QUEUE;
+    private static final String WORKFLOW_ID_PREFIX = "claim/property/";
+
+    private static final Logger log = LoggerFactory.getLogger(PropertyClaimService.class);
 
     private final WorkflowClient workflowClient;
 
@@ -34,7 +42,7 @@ public class PropertyClaimService {
     }
 
     public static String workflowId(String claimId) {
-        return "claim/property/" + claimId;
+        return WORKFLOW_ID_PREFIX + claimId;
     }
 
     private static String generateClaimId() {
@@ -113,14 +121,53 @@ public class PropertyClaimService {
         List<PropertyClaimState> claims = new ArrayList<>();
         for (WorkflowExecutionInfo info : response.getExecutionsList()) {
             String wfId = info.getExecution().getWorkflowId();
-            claims.add(workflowClient.newWorkflowStub(PropertyClaimWorkflow.class, wfId).getClaim());
+            try {
+                claims.add(
+                    workflowClient.newWorkflowStub(PropertyClaimWorkflow.class, wfId).getClaim());
+            } catch (WorkflowQueryException e) {
+                // A workflow that cannot answer a query (e.g. one terminated mid-workflow-task,
+                // which Temporal cannot safely replay) must not fail the whole page. Fall back to
+                // the last-known state mirrored in visibility search attributes.
+                log.warn("getClaim query failed for {}; using visibility fallback", wfId, e);
+                claims.add(claimFromVisibility(info));
+            }
         }
         return new PropertyClaimListResponse(claims, PageTokens.encode(response.getNextPageToken()));
     }
 
+    // Reconstructs a partial claim state from the visibility search attributes the workflow mirrors
+    // as it progresses (claimStatus, policyId, policyHolderId), plus the claim id embedded in the
+    // workflow id. Used when the live getClaim query is unavailable; richer fields stay unset.
+    static PropertyClaimState claimFromVisibility(WorkflowExecutionInfo info) {
+        PropertyClaimState state = new PropertyClaimState();
+        String wfId = info.getExecution().getWorkflowId();
+        state.setClaimId(wfId.startsWith(WORKFLOW_ID_PREFIX)
+            ? wfId.substring(WORKFLOW_ID_PREFIX.length()) : wfId);
+
+        String status = readStringSearchAttribute(info, ClaimSearchAttributes.CLAIM_STATUS);
+        if (hasText(status)) {
+            state.setStatus(ClaimStatus.valueOf(status));
+        }
+        state.setPolicyId(readStringSearchAttribute(info, ClaimSearchAttributes.POLICY_ID));
+        state.setPolicyHolderId(readStringSearchAttribute(info, ClaimSearchAttributes.POLICY_HOLDER_ID));
+        return state;
+    }
+
+    // Decodes a single keyword/text search-attribute value, or null when it is absent.
+    private static String readStringSearchAttribute(WorkflowExecutionInfo info, String key) {
+        Payload payload = info.getSearchAttributes().getIndexedFieldsMap().get(key);
+        if (payload == null) {
+            return null;
+        }
+        return GlobalDataConverter.get().fromPayload(payload, String.class, String.class);
+    }
+
     // Pure, unit-testable (the test server does not implement ListWorkflowExecutions).
     static String buildClaimListQuery(String policyHolderId, String policyId, String status) {
-        String query = "WorkflowType = '" + PropertyClaimWorkflow.class.getSimpleName() + "'";
+        // Exclude terminated workflows: termination can interrupt a workflow task, leaving a
+        // history that cannot be safely replayed to answer the per-claim getClaim query.
+        String query = "WorkflowType = '" + PropertyClaimWorkflow.class.getSimpleName() + "'"
+            + " AND ExecutionStatus != 'Terminated'";
         if (hasText(policyHolderId)) {
             query += " AND " + ClaimSearchAttributes.POLICY_HOLDER_ID + " = '" + policyHolderId + "'";
         }
