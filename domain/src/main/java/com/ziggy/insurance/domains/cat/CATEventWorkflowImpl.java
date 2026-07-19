@@ -26,7 +26,7 @@ import org.slf4j.Logger;
 @WorkflowImpl(taskQueues = "claim-task-queue")
 public class CATEventWorkflowImpl implements CATEventWorkflow {
 
-    private static final int DEFAULT_BATCH_SIZE = 500;
+    private static final int DEFAULT_BATCH_SIZE = 1000;
 
     // Child property claims run at Temporal's default priority key (3, the middle of the [1, 5]
     // range) so they sit below the priority-1 CAT event parent on the shared claim task queue.
