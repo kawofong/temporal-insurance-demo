@@ -9,12 +9,18 @@ import com.ziggy.insurance.domains.cat.CATEventWorkflow;
 import com.ziggy.insurance.domains.policy.TaskQueues;
 import io.temporal.client.WorkflowClient;
 import io.temporal.client.WorkflowOptions;
+import io.temporal.common.Priority;
 import org.springframework.stereotype.Service;
 
 @Service
 public class CATEventService {
 
     private static final String TASK_QUEUE = TaskQueues.CLAIM_TASK_QUEUE;
+
+    // CAT events are the most urgent work on the claim task queue; priority key 1
+    // is the highest of Temporal's [1, 5] range, so their tasks are scheduled ahead
+    // of routine claim processing.
+    private static final int CAT_EVENT_PRIORITY_KEY = 1;
 
     private final WorkflowClient workflowClient;
 
@@ -41,6 +47,9 @@ public class CATEventService {
             WorkflowOptions.newBuilder()
                 .setTaskQueue(TASK_QUEUE)
                 .setWorkflowId(workflowId(req.catEventId()))
+                .setPriority(Priority.newBuilder()
+                    .setPriorityKey(CAT_EVENT_PRIORITY_KEY)
+                    .build())
                 .build());
         WorkflowClient.start(wf::run, input);
 
