@@ -3,6 +3,7 @@
 package com.ziggy.insurance.domains.claim.auto;
 
 import com.ziggy.insurance.domains.claim.models.AdjusterApprovalRequest;
+import com.ziggy.insurance.domains.claim.models.AdjusterDenialRequest;
 import com.ziggy.insurance.domains.claim.models.DamageAssessmentResult;
 import io.temporal.workflow.QueryMethod;
 import io.temporal.workflow.SignalMethod;
@@ -17,6 +18,9 @@ public interface AutoClaimWorkflow {
 
     @SignalMethod
     void adjusterApproval(AdjusterApprovalRequest request);
+
+    @SignalMethod
+    void adjusterDenial(AdjusterDenialRequest request);
 
     @SignalMethod
     void submitDamageAssessment(DamageAssessmentResult assessment);

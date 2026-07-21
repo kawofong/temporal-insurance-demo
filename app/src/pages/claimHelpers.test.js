@@ -4,6 +4,7 @@ import {
   CLAIM_ENDPOINT,
   CLAIM_ENDPOINTS,
   approveClaim,
+  denyClaim,
   claimStatusClass,
   fetchClaim,
   formatClaimStatus,
@@ -154,6 +155,23 @@ describe("claimHelpers fetch client", () => {
       expect.objectContaining({
         method: "POST",
         body: JSON.stringify({ adjusterId: "adj-sarah", approvedPayoutAmount: 1200, notes: "Looks good" }),
+      }),
+    );
+  });
+
+  it("denyClaim posts the adjuster denial", async () => {
+    global.fetch.mockResolvedValue(jsonResponse({}, true, 202));
+
+    await denyClaim("CLM-ABC", {
+      adjusterId: "adj-sarah",
+      reason: "Damage below deductible",
+    });
+
+    expect(global.fetch).toHaveBeenCalledWith(
+      `${CLAIM_ENDPOINT}/CLM-ABC/deny`,
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({ adjusterId: "adj-sarah", reason: "Damage below deductible" }),
       }),
     );
   });

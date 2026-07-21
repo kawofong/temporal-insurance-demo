@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import {
   SIGNAL_REFRESH_DELAY_MS,
   approveClaim,
+  denyClaim,
   formatCurrency,
   listAdjusterQueue,
   submitDamageAssessment,
@@ -342,6 +343,7 @@ function AdjusterPanel() {
   const [selectedClaim, setSelectedClaim] = useState(null);
   const [approvedPayoutAmount, setApprovedPayoutAmount] = useState("");
   const [notes, setNotes] = useState("");
+  const [rejectionReason, setRejectionReason] = useState("");
   const [adjusterId, setAdjusterId] = useState(DEMO_ADJUSTER_ID);
   const [isBusy, setIsBusy] = useState(false);
   const [notice, setNotice] = useState("");
@@ -352,6 +354,7 @@ function AdjusterPanel() {
     // Nullish coalescing (not ||) preserves a legitimate $0 estimated repair cost.
     setApprovedPayoutAmount(claim.estimatedRepairCost ?? "");
     setNotes("");
+    setRejectionReason("");
     setAdjusterId(DEMO_ADJUSTER_ID);
     setNotice("");
     setFormError("");
@@ -377,12 +380,39 @@ function AdjusterPanel() {
     }
   }
 
+  // Denial requires a reason: the workflow records it and exits with REJECTED. Validate
+  // inline (reusing formError) rather than relying on the reason textarea's own required
+  // attribute, since the button that triggers this is not the form's default submit.
+  async function submitDenial() {
+    if (!rejectionReason.trim()) {
+      setFormError("A rejection reason is required to deny a claim.");
+      return;
+    }
+    setIsBusy(true);
+    setFormError("");
+    try {
+      await denyClaim(
+        selectedClaim.claimId,
+        { adjusterId, reason: rejectionReason.trim() },
+        selectedClaim.claimType,
+      );
+      setNotice(`Claim ${selectedClaim.claimId} denied.`);
+      setSelectedClaim(null);
+      window.setTimeout(refresh, SIGNAL_REFRESH_DELAY_MS);
+    } catch (submitError) {
+      setFormError(submitError.message || "Unable to deny claim.");
+    } finally {
+      setIsBusy(false);
+    }
+  }
+
   return (
     <div className="admin-tab-panel">
       <h3>✅ Claims Adjuster</h3>
       <p>
         Stand-in for the claims adjuster console. Here an adjuster reviews an assessed
-        claim and approves the payout to move it toward closure.
+        claim and either approves the payout to move it toward closure or denies the claim
+        with a reason.
       </p>
 
       {notice && <div className="policy-modal-notice">{notice}</div>}
@@ -412,7 +442,7 @@ function AdjusterPanel() {
       />
 
       {selectedClaim && (
-        <ClaimActionModal title={`Approve Payout — ${selectedClaim.claimId}`} onClose={() => setSelectedClaim(null)}>
+        <ClaimActionModal title={`Review Claim — ${selectedClaim.claimId}`} onClose={() => setSelectedClaim(null)}>
           <form className="policy-action-form" onSubmit={submitApproval}>
             <label>
               Approved Payout Amount
@@ -429,6 +459,14 @@ function AdjusterPanel() {
               <textarea value={notes} onChange={(event) => setNotes(event.target.value)} />
             </label>
             <label>
+              Rejection Reason
+              <textarea
+                value={rejectionReason}
+                onChange={(event) => setRejectionReason(event.target.value)}
+                placeholder="Required to deny the claim"
+              />
+            </label>
+            <label>
               Adjuster ID
               <input type="text" value={adjusterId} onChange={(event) => setAdjusterId(event.target.value)} required />
             </label>
@@ -441,6 +479,14 @@ function AdjusterPanel() {
                 disabled={isBusy}
               >
                 Cancel
+              </button>
+              <button
+                className="admin-deny-button"
+                type="button"
+                onClick={submitDenial}
+                disabled={isBusy}
+              >
+                {isBusy ? "Submitting..." : "Deny Claim"}
               </button>
               <button type="submit" disabled={isBusy}>
                 {isBusy ? "Submitting..." : "Approve Payout"}

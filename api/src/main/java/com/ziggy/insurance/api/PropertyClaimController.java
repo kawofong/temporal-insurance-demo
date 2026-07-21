@@ -3,6 +3,7 @@
 package com.ziggy.insurance.api;
 
 import com.ziggy.insurance.domains.claim.models.AdjusterApprovalRequest;
+import com.ziggy.insurance.domains.claim.models.AdjusterDenialRequest;
 import com.ziggy.insurance.domains.claim.models.DamageAssessmentResult;
 import com.ziggy.insurance.domains.claim.property.PropertyClaimState;
 import org.springframework.http.HttpStatus;
@@ -40,6 +41,13 @@ public class PropertyClaimController {
     public ResponseEntity<Void> approve(
             @PathVariable String claimId, @RequestBody AdjusterApprovalRequest request) {
         claimService.approvePropertyClaim(claimId, request);
+        return ResponseEntity.accepted().build();
+    }
+
+    @PostMapping("/{claimId}/deny")
+    public ResponseEntity<Void> deny(
+            @PathVariable String claimId, @RequestBody AdjusterDenialRequest request) {
+        claimService.denyPropertyClaim(claimId, request);
         return ResponseEntity.accepted().build();
     }
 

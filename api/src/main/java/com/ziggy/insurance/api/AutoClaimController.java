@@ -4,6 +4,7 @@ package com.ziggy.insurance.api;
 
 import com.ziggy.insurance.domains.claim.auto.AutoClaimState;
 import com.ziggy.insurance.domains.claim.models.AdjusterApprovalRequest;
+import com.ziggy.insurance.domains.claim.models.AdjusterDenialRequest;
 import com.ziggy.insurance.domains.claim.models.DamageAssessmentResult;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -40,6 +41,13 @@ public class AutoClaimController {
     public ResponseEntity<Void> approve(
             @PathVariable String claimId, @RequestBody AdjusterApprovalRequest request) {
         claimService.approveAutoClaim(claimId, request);
+        return ResponseEntity.accepted().build();
+    }
+
+    @PostMapping("/{claimId}/deny")
+    public ResponseEntity<Void> deny(
+            @PathVariable String claimId, @RequestBody AdjusterDenialRequest request) {
+        claimService.denyAutoClaim(claimId, request);
         return ResponseEntity.accepted().build();
     }
 
