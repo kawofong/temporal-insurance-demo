@@ -131,7 +131,6 @@ class PropertyClaimAiAdjusterWorkflowTest {
         env.registerSearchAttribute(ClaimSearchAttributes.POLICY_ID, IndexedValueType.INDEXED_VALUE_TYPE_KEYWORD);
         env.registerSearchAttribute(ClaimSearchAttributes.POLICY_HOLDER_ID, IndexedValueType.INDEXED_VALUE_TYPE_KEYWORD);
         env.registerSearchAttribute(ClaimSearchAttributes.CLAIM_STATUS, IndexedValueType.INDEXED_VALUE_TYPE_KEYWORD);
-        env.registerSearchAttribute(ClaimSearchAttributes.CAT_EVENT_ID, IndexedValueType.INDEXED_VALUE_TYPE_KEYWORD);
     }
 
     private void registerNotifications(TestWorkflowEnvironment env) {

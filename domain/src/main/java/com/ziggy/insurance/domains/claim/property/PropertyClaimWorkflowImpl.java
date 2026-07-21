@@ -69,11 +69,8 @@ public class PropertyClaimWorkflowImpl implements PropertyClaimWorkflow {
     public PropertyClaimState run(PropertyClaimInput input) {
 
         // Upsert search attributes so claims are filterable by policy and holder in Visibility.
-        // catEventId is upserted only for CAT-spawned claims so a batch enableAiAdjuster can be
-        // scoped to a single catastrophe event (§6.5); portal-filed claims skip it.
         ClaimSearchAttributes.upsertPolicyId(input.policyId());
         ClaimSearchAttributes.upsertPolicyHolderId(input.policyHolderId());
-        ClaimSearchAttributes.upsertCatEventId(input.catEventId());
 
         // Local claim activities (coverage, adjuster). Payment now lives in the payment domain
         // and is triggered over Nexus, not through this stub.

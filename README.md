@@ -63,18 +63,15 @@ mise run agents:install   # once
 mise run agents:worker    # 5th terminal, alongside the four above
 ```
 
-End-to-end scenarios (each drives the REST API and polls to completion):
+End-to-end scenario (drives the REST API and polls to completion):
 
 ```bash
-mise run demo:adjuster:human         # baseline: human field + claim adjuster
-mise run demo:adjuster:ai            # fully autonomous: AI adjusters, enabled at intake
-mise run demo:adjuster:ai:takeover   # park a human claim, then hand it to the AI via signal
-mise run demo:adjuster:ai:drain      # batch-signal every pending claim to AI at once
+mise run demo:ai-adjuster      # batch-signal every running claim to AI, drain the queue
 ```
 
-A claim can also be switched to AI directly over REST:
-`POST /api/v1/claims/property/{id}/ai-adjuster` (single) or
-`POST /api/v1/claims/property/ai-adjuster:enable-batch?status=PENDING_DAMAGE_ASSESSMENT` (batch).
+The drain scenario fires a single Temporal batch `enableAiAdjuster` signal over a Visibility
+query of every running property claim, then watches the claims parked on a human adjuster drain
+to `CLOSED`. Seed the pending claims first.
 
 ## Running against Temporal Cloud
 

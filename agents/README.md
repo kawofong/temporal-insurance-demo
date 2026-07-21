@@ -108,8 +108,8 @@ agent fills the approve/deny seam; everything they need is passed as the child-w
 so no agent fetches state. The Java↔Python wire format is the `snake_case` JSON these Pydantic
 models define, mirrored by the Java records in
 `domain/.../claim/property/agents/` and guarded by a serialization contract test on each side. See
-`docs/ai-claim-adjustment-spec.md` for the full design, and the `demo:adjuster:*` mise tasks for
-runnable end-to-end scenarios (the AI paths need this worker running against Ollama).
+`docs/ai-claim-adjustment-spec.md` for the full design, and the `demo:ai-adjuster` mise task
+for a runnable end-to-end scenario (needs this worker running against Ollama).
 
 # Tests
 

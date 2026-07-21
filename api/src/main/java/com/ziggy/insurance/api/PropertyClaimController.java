@@ -66,13 +66,11 @@ public class PropertyClaimController {
         return ResponseEntity.accepted().build();
     }
 
-    // Flip many in-flight claims to AI adjustment at once via a Temporal batch signal (§6.5).
-    // Optionally scope the batch to a claim status and/or a single catastrophe event.
+    // Flip every running property claim to AI adjustment at once via a Temporal batch signal
+    // (§6.5). Takes no input: the batch always targets all RUNNING PropertyClaimWorkflow executions.
     @PostMapping("/ai-adjuster:enable-batch")
-    public ResponseEntity<EnableAiAdjusterBatchResponse> enableAiAdjusterBatch(
-            @RequestParam(required = false) String status,
-            @RequestParam(required = false) String catEventId) {
-        String jobId = claimService.enableAiAdjusterBatch(status, catEventId);
+    public ResponseEntity<EnableAiAdjusterBatchResponse> enableAiAdjusterBatch() {
+        String jobId = claimService.enableAiAdjusterBatch();
         return ResponseEntity.accepted().body(new EnableAiAdjusterBatchResponse(jobId));
     }
 

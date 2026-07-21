@@ -116,19 +116,19 @@ public class PropertyClaimService {
             .enableAiAdjuster();
     }
 
-    // Flips many in-flight claims to AI adjustment at once via a Temporal batch signal operation
-    // driven by a Visibility query (§6.5) — not a client-side list-and-loop, so it scales to the
-    // 10k-claim catastrophe case. Optionally scoped to a claim status and/or a single CAT event.
-    // Returns the batch job id. Note: the time-skipping test server does not implement
-    // ListWorkflowExecutions, so this path is verified E2E on a real dev server; the query it
-    // builds is unit-tested via buildAiAdjusterBatchQuery.
-    public String enableAiAdjusterBatch(String status, String catEventId) {
+    // Flips every running property claim to AI adjustment at once via a Temporal batch signal
+    // operation driven by a Visibility query (§6.5) — not a client-side list-and-loop, so it scales
+    // to the 10k-claim catastrophe case. Takes no input: the batch always targets all RUNNING
+    // PropertyClaimWorkflow executions. Returns the batch job id. Note: the time-skipping test
+    // server does not implement ListWorkflowExecutions, so this path is verified E2E on a real dev
+    // server; the query it builds is unit-tested via buildAiAdjusterBatchQuery.
+    public String enableAiAdjusterBatch() {
         String namespace = workflowClient.getOptions().getNamespace();
         String jobId = UUID.randomUUID().toString();
         StartBatchOperationRequest request = StartBatchOperationRequest.newBuilder()
             .setNamespace(namespace)
             .setJobId(jobId)
-            .setVisibilityQuery(buildAiAdjusterBatchQuery(status, catEventId))
+            .setVisibilityQuery(buildAiAdjusterBatchQuery())
             .setReason("AI takeover: enable AI adjuster")
             .setSignalOperation(BatchOperationSignal.newBuilder()
                 .setSignal("enableAiAdjuster")
@@ -141,22 +141,12 @@ public class PropertyClaimService {
         return jobId;
     }
 
-    // Pure, unit-testable builder for the batch Visibility query. Targets only Running property
-    // claims (a batch signal to a closed workflow is rejected), optionally narrowed to a claim
-    // status and/or a single catastrophe event via the search attributes the workflow upserts.
-    static String buildAiAdjusterBatchQuery(String status, String catEventId) {
-        String query = "WorkflowType = '" + PropertyClaimWorkflow.class.getSimpleName() + "'"
+    // Pure, unit-testable builder for the batch Visibility query. Targets every Running property
+    // claim (a batch signal to a closed workflow is rejected); the signal itself is idempotent and
+    // only takes effect on claims parked on a human adjuster seam.
+    static String buildAiAdjusterBatchQuery() {
+        return "WorkflowType = '" + PropertyClaimWorkflow.class.getSimpleName() + "'"
             + " AND ExecutionStatus = 'Running'";
-        if (hasText(status)) {
-            if (!isValidClaimStatus(status)) {
-                throw new IllegalArgumentException("Unknown claim status: " + status);
-            }
-            query += " AND " + ClaimSearchAttributes.CLAIM_STATUS + " = '" + status + "'";
-        }
-        if (hasText(catEventId)) {
-            query += " AND " + ClaimSearchAttributes.CAT_EVENT_ID + " = '" + catEventId + "'";
-        }
-        return query;
     }
 
     // Pages through the visibility results: only the current page is hydrated via Query,

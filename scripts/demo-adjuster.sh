@@ -1,39 +1,31 @@
 #!/usr/bin/env bash
-# End-to-end demo driver for the property-claim adjuster paths (spec §8). Drives the REST API
-# with curl + status polling. Four modes:
+# End-to-end demo driver for the property-claim AI-adjuster "drain" scenario (spec §6.5): one
+# Temporal batch signal flips every *running* property claim to AI adjustment, so claims parked
+# on a human adjuster are handed to the field- and claim-adjuster agents and drain to CLOSED.
 #
-#   human     Baseline: a human field adjuster submits the damage assessment and a human claim
-#             adjuster approves the payout. No AI involved.
-#   ai        Fully autonomous: the claim is opened already in AI mode (aiAdjusterEnabled at
-#             intake); the field- and claim-adjuster agents assess and approve with no human input.
-#   takeover  Act 4 "human -> AI": a normal claim parks at PENDING_DAMAGE_ASSESSMENT, then a
-#             single enableAiAdjuster signal hands the parked claim to the agents.
-#   drain     Seed several pending claims, then one batch enableAiAdjuster signal (over a
-#             Visibility query) drains them all to CLOSED.
+# This fires a single enableAiAdjuster batch operation over a Visibility query
+# (ExecutionStatus='Running') rather than a client-side list-and-loop, so it scales to the
+# 10k-claim CAT case. Seed the claims first (e.g. via a CATEventWorkflow or the portal) — this
+# script signals whatever is already running.
 #
 # Prerequisites (separate terminals): `mise run temporal:dev`, `mise run temporal:worker`,
-# `mise run api`, and for the ai/takeover/drain modes `mise run agents:worker` (needs Ollama).
+# `mise run api`, and `mise run agents:worker` (needs Ollama) for the agents to close the claims.
 set -euo pipefail
 
 API_BASE_URL="${API_BASE_URL:-http://localhost:8080}"
 CLAIMS_URL="${API_BASE_URL}/api/v1/claims/property"
-POLL_TIMEOUT="${POLL_TIMEOUT:-180}"   # seconds to wait for a status (LLM paths are slower)
-DRAIN_COUNT="${DRAIN_COUNT:-3}"        # claims seeded by the drain scenario
-
-MODE=""
+POLL_TIMEOUT="${POLL_TIMEOUT:-180}"    # seconds to wait for the queue to drain (LLM paths are slow)
 
 usage() {
     cat <<'EOF'
-Usage: demo-adjuster.sh --mode human|ai|takeover|drain
+Usage: demo-adjuster.sh
 
-  --mode human      Human field + claim adjuster (baseline).
-  --mode ai         Fully autonomous: AI adjusters, enabled at intake.
-  --mode takeover   Park a human claim, then hand it to the AI adjusters via signal.
-  --mode drain      Seed several pending claims, then batch-signal them all to AI.
-  -h, --help        Show this help.
+Batch-signals enableAiAdjuster to every running property claim and watches the claims parked on
+a human adjuster drain to CLOSED.
 
-Env overrides: API_BASE_URL (default http://localhost:8080), POLL_TIMEOUT (seconds),
-DRAIN_COUNT (claims seeded by --mode drain).
+  -h, --help            Show this help.
+
+Env overrides: API_BASE_URL (default http://localhost:8080), POLL_TIMEOUT (seconds).
 EOF
 }
 
@@ -50,144 +42,64 @@ require_api() {
     fi
 }
 
-# Opens a property claim. $1 = aiAdjusterEnabled (true|false). Echoes the generated claim id.
-open_claim() {
-    local ai_enabled="$1"
-    local body response claim_id
-    body=$(cat <<EOF
-{
-  "policyId": "demo-property-001",
-  "policyHolderId": "PH-001",
-  "incidentDescription": "Hurricane-force winds tore off roof shingles and shattered windows.",
-  "incidentDate": 1760000000000,
-  "propertyAddress": "742 Evergreen Terrace, Springfield",
-  "propertyType": "SINGLE_FAMILY",
-  "aiAdjusterEnabled": ${ai_enabled}
-}
-EOF
-)
-    response=$(curl -s -X POST "${CLAIMS_URL}" -H 'Content-Type: application/json' -d "${body}")
-    claim_id=$(json_field claimId "${response}")
-    if [[ -z "${claim_id}" ]]; then
-        echo "Error: failed to open claim. Response: ${response}" >&2
-        exit 1
-    fi
-    echo "${claim_id}"
+# Counts property claims currently in a given status via the list (Visibility) endpoint. The
+# demo's backlog fits one page; a production-scale drain would page through nextPageToken.
+count_by_status() {
+    local status="$1" response
+    response=$(curl -s "${CLAIMS_URL}?status=${status}&pageSize=1000")
+    grep -o '"claimId"' <<<"${response}" | wc -l | tr -d ' '
 }
 
-claim_status() {
-    local claim_id="$1"
-    json_field status "$(curl -s "${CLAIMS_URL}/${claim_id}")"
-}
-
-# Blocks until $1 reaches status $2 (or POLL_TIMEOUT elapses).
-wait_for_status() {
-    local claim_id="$1" expected="$2" deadline status
-    deadline=$(( $(date +%s) + POLL_TIMEOUT ))
-    while :; do
-        status=$(claim_status "${claim_id}")
-        if [[ "${status}" == "${expected}" ]]; then
-            echo "    ${claim_id} -> ${status}"
-            return 0
-        fi
-        if [[ $(date +%s) -ge ${deadline} ]]; then
-            echo "Error: timed out waiting for ${claim_id} to reach ${expected} (last: ${status})." >&2
-            exit 1
-        fi
-        sleep 2
-    done
-}
-
-show_outcome() {
-    local claim_id="$1"
-    echo "==> Final claim state:"
-    curl -s "${CLAIMS_URL}/${claim_id}"
-    echo
-}
-
-demo_human() {
-    require_api
-    echo "==> [human] Opening a property claim (default human path)"
-    local claim_id; claim_id=$(open_claim false)
-    echo "    opened ${claim_id}"
-    wait_for_status "${claim_id}" PENDING_DAMAGE_ASSESSMENT
-
-    echo "==> [human] Field adjuster submits the damage assessment"
-    curl -s -o /dev/null -X POST "${CLAIMS_URL}/${claim_id}/damage-assessment" \
-        -H 'Content-Type: application/json' \
-        -d '{ "summary": "Roof and window damage with water intrusion.", "estimatedCost": 24500 }'
-    wait_for_status "${claim_id}" PENDING_APPROVAL
-
-    echo "==> [human] Claim adjuster approves the payout"
-    curl -s -o /dev/null -X POST "${CLAIMS_URL}/${claim_id}/approve" \
-        -H 'Content-Type: application/json' \
-        -d '{ "adjusterId": "adj-sarah", "approvedPayoutAmount": 23500, "notes": "Approved after review" }'
-    wait_for_status "${claim_id}" CLOSED
-    show_outcome "${claim_id}"
-}
-
-demo_ai() {
-    require_api
-    echo "==> [ai] Opening a property claim already in AI mode (aiAdjusterEnabled at intake)"
-    local claim_id; claim_id=$(open_claim true)
-    echo "    opened ${claim_id} — field + claim adjuster agents will assess and approve"
-    wait_for_status "${claim_id}" CLOSED
-    show_outcome "${claim_id}"
-}
-
-demo_takeover() {
-    require_api
-    echo "==> [takeover] Opening a normal (human) property claim"
-    local claim_id; claim_id=$(open_claim false)
-    echo "    opened ${claim_id}"
-    wait_for_status "${claim_id}" PENDING_DAMAGE_ASSESSMENT
-
-    echo "==> [takeover] Handing the parked claim to the AI adjusters via signal"
-    curl -s -o /dev/null -X POST "${CLAIMS_URL}/${claim_id}/ai-adjuster"
-    wait_for_status "${claim_id}" CLOSED
-    show_outcome "${claim_id}"
+# Total claims still parked on a human adjuster seam (either pending status). A drained claim
+# has left both — CLOSED on approval or REJECTED on denial.
+count_pending() {
+    echo $(( $(count_by_status PENDING_DAMAGE_ASSESSMENT) + $(count_by_status PENDING_APPROVAL) ))
 }
 
 demo_drain() {
     require_api
-    echo "==> [drain] Seeding ${DRAIN_COUNT} normal property claims"
-    local ids=() claim_id
-    for ((i = 0; i < DRAIN_COUNT; i++)); do
-        claim_id=$(open_claim false)
-        ids+=("${claim_id}")
-        echo "    opened ${claim_id}"
-    done
-    for claim_id in "${ids[@]}"; do
-        wait_for_status "${claim_id}" PENDING_DAMAGE_ASSESSMENT
-    done
 
-    echo "==> [drain] Batch-signal enableAiAdjuster over all PENDING_DAMAGE_ASSESSMENT claims"
-    curl -s -X POST "${CLAIMS_URL}/ai-adjuster:enable-batch?status=PENDING_DAMAGE_ASSESSMENT"
-    echo
-    for claim_id in "${ids[@]}"; do
-        wait_for_status "${claim_id}" CLOSED
+    local before
+    before=$(count_pending)
+    echo "==> ${before} property claim(s) currently parked on a human adjuster."
+    if [[ "${before}" -eq 0 ]]; then
+        echo "    Nothing parked to drain — seed some pending claims first, then re-run." >&2
+    fi
+
+    echo "==> Batch-signalling enableAiAdjuster over all running property claims"
+    local response job_id
+    response=$(curl -s -X POST "${CLAIMS_URL}/ai-adjuster:enable-batch")
+    job_id=$(json_field jobId "${response}")
+    if [[ -z "${job_id}" ]]; then
+        echo "Error: batch signal failed. Response: ${response}" >&2
+        exit 1
+    fi
+    echo "    started batch job ${job_id} (inspect: temporal batch describe --job-id ${job_id})"
+
+    echo "==> Waiting for the AI adjusters to drain the queue..."
+    local deadline pending
+    deadline=$(( $(date +%s) + POLL_TIMEOUT ))
+    while :; do
+        pending=$(count_pending)
+        echo "    ${pending} claim(s) still pending"
+        if [[ "${pending}" -eq 0 ]]; then
+            echo "==> Queue drained: no property claims remain on a human adjuster."
+            return 0
+        fi
+        if [[ $(date +%s) -ge ${deadline} ]]; then
+            echo "Error: timed out after ${POLL_TIMEOUT}s with ${pending} claim(s) still pending." >&2
+            exit 1
+        fi
+        sleep 3
     done
-    echo "==> [drain] All ${DRAIN_COUNT} claims drained to CLOSED."
 }
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
-        --mode)
-            shift
-            [[ $# -gt 0 ]] || { echo "Error: --mode requires a value." >&2; exit 1; }
-            MODE="$1"
-            ;;
         -h|--help) usage; exit 0 ;;
         *) echo "Error: unknown option '$1'." >&2; usage >&2; exit 1 ;;
     esac
     shift
 done
 
-case "${MODE}" in
-    human)    demo_human ;;
-    ai)       demo_ai ;;
-    takeover) demo_takeover ;;
-    drain)    demo_drain ;;
-    "")       echo "Error: --mode is required." >&2; usage >&2; exit 1 ;;
-    *)        echo "Error: unknown mode '${MODE}'." >&2; usage >&2; exit 1 ;;
-esac
+demo_drain

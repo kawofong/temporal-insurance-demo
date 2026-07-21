@@ -258,17 +258,17 @@ The batch targets every matching execution and sends `enableAiAdjuster`, e.g. vi
 
 ```bash
 temporal workflow signal \
-  --query 'WorkflowType="PropertyClaimWorkflow" AND claimStatus="PENDING_DAMAGE_ASSESSMENT"' \
+  --query 'WorkflowType="PropertyClaimWorkflow" AND ExecutionStatus="Running"' \
   --name enableAiAdjuster \
   --reason "AI takeover"
 ```
 
 or programmatically from the API via `StartBatchOperation` with a signal operation over the
-same query. The query filters on the `claimStatus` search attribute already upserted by
-`ClaimSearchAttributes` (registered as `claimStatus=Keyword` by `temporal:dev`). This scales
-to the 10k-claim case noted in `docs/todos.md`; add `AND CATEventId="..."` to scope a batch
-to one catastrophe event. Expose a thin API trigger:
-`POST /api/v1/claims/property/ai-adjuster:enable-batch`.
+same query. The API trigger takes no input: it always targets **all running** property claims
+(`WorkflowType="PropertyClaimWorkflow" AND ExecutionStatus="Running"`). The signal is idempotent
+and only takes effect on claims parked on a human adjuster seam, so signalling every running
+claim is safe. This scales to the 10k-claim case noted in `docs/todos.md`. Expose a thin API
+trigger: `POST /api/v1/claims/property/ai-adjuster:enable-batch`.
 
 ## 7. Data-model & API changes
 
@@ -286,8 +286,9 @@ to one catastrophe event. Expose a thin API trigger:
 - `field_adjuster/`: **unchanged.**
 
 **API (`api/`)**
-- `PropertyClaimService`: `enableAiAdjuster(claimId)` (single) and `enableAiAdjusterBatch(...)`
-  (batch signal, §6.5); `submitPropertyClaim` accepts the optional `aiAdjusterEnabled` flag.
+- `PropertyClaimService`: `enableAiAdjuster(claimId)` (single) and `enableAiAdjusterBatch()`
+  (no-input batch signal over all running claims, §6.5); `submitPropertyClaim` accepts the
+  optional `aiAdjusterEnabled` flag.
 - `PropertyClaimController`: `POST /claims/property/{id}/ai-adjuster` and the batch route.
 
 **Workers (`workers/`)** — no change; `claim-task-queue` already hosts the workflow. The
@@ -295,33 +296,18 @@ Python `agents:worker` must be running for the AI path (documented prerequisite)
 
 ## 8. Demo entry points (`mise` tasks)
 
-New tasks in `mise.toml`. Prerequisites (separate terminals): `temporal:dev`,
-`temporal:worker` (Java), `api`, and for AI paths `agents:worker` (needs Ollama). Scenario
-scripts live in `scripts/` and drive the REST API with `curl` + status polling.
+One task in `mise.toml`. Prerequisites (separate terminals): `temporal:dev`,
+`temporal:worker` (Java), `api`, and `agents:worker` (needs Ollama). The scenario script lives
+in `scripts/` and drives the REST API with `curl` + status polling.
 
 | Task | Scenario |
 |---|---|
-| `demo:adjuster:human` | Open a claim → parks at `PENDING_DAMAGE_ASSESSMENT` → script sends human `submitDamageAssessment` then `adjusterApproval` → `CLOSED`. Baseline path. |
-| `demo:adjuster:ai` | Open a claim, immediately `enableAiAdjuster` → field-adjuster agent assesses, claim-adjuster agent approves → `CLOSED` with `approvedByAdjusterId = adj-ai-agent`, no human input. |
-| `demo:adjuster:ai:takeover` | Open a normal claim → let it park at `PENDING_DAMAGE_ASSESSMENT` → `enableAiAdjuster` → agents take over the parked claim and close it. The Act 4 "human → AI" beat. |
-| `demo:adjuster:ai:drain` | Seed several pending claims → **batch signal** `enableAiAdjuster` over the Visibility query (§6.5) → watch the queue drain to `CLOSED`. |
+| `demo:ai-adjuster` | Seed pending claims out of band, then **batch signal** `enableAiAdjuster` over the Visibility query of all running property claims (§6.5) → watch the claims parked on a human adjuster drain to `CLOSED`. |
 
 ```toml
-[tasks."demo:adjuster:human"]
-description = "E2E: property claim adjudicated by human adjusters (baseline path)"
-run = "./scripts/demo-adjuster.sh --mode human"
-
-[tasks."demo:adjuster:ai"]
-description = "E2E: property claim fully adjudicated by AI (field + claim adjuster agents)"
-run = "./scripts/demo-adjuster.sh --mode ai"
-
-[tasks."demo:adjuster:ai:takeover"]
-description = "E2E: human-parked claim taken over by the AI adjusters via signal"
-run = "./scripts/demo-adjuster.sh --mode takeover"
-
-[tasks."demo:adjuster:ai:drain"]
-description = "E2E: batch-signal enableAiAdjuster across all pending property claims"
-run = "./scripts/demo-adjuster.sh --mode drain"
+[tasks."demo:ai-adjuster"]
+description = "E2E: batch-signal enableAiAdjuster across all running property claims"
+run = "./scripts/demo-adjuster.sh"
 ```
 
 ## 9. Testing (TDD)
@@ -353,8 +339,8 @@ workflows.
 - Claim opened with `aiAdjusterEnabled=true` → both agents run without any human signal.
 
 **End-to-end**
-- The four `mise` demo tasks run green against a real dev server with the Java worker, API,
-  and the real Python `agents:worker` (Ollama). This is the acceptance gate.
+- The `demo:ai-adjuster` task runs green against a real dev server with the Java worker,
+  API, and the real Python `agents:worker` (Ollama). This is the acceptance gate.
 
 ## 10. Decisions made (defaults, flag if wrong)
 
@@ -384,5 +370,5 @@ workflows.
 3. Workflow: `aiAdjusterEnabled` field + `enableAiAdjuster` signal, Seam A, then Seam B, with
    integration tests alongside.
 4. API service + controller (single + batch signal) + optional intake flag.
-5. `scripts/demo-adjuster.sh` + the four `mise` tasks.
-6. E2E run of all four tasks against a real dev server with the agents worker.
+5. `scripts/demo-adjuster.sh` + the `demo:ai-adjuster` `mise` task.
+6. E2E run of the drain task against a real dev server with the agents worker.
