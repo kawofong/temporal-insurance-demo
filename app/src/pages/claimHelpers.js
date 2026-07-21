@@ -164,3 +164,14 @@ export async function approveClaim(claimId, { adjusterId, approvedPayoutAmount, 
     throw new Error(await readApiError(response, `Approval returned ${response.status}`));
   }
 }
+
+export async function denyClaim(claimId, { adjusterId, reason }, claimType = "auto") {
+  const response = await fetch(`${endpointFor(claimType)}/${claimId}/deny`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ adjusterId, reason }),
+  });
+  if (!response.ok) {
+    throw new Error(await readApiError(response, `Denial returned ${response.status}`));
+  }
+}

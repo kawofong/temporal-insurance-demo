@@ -228,6 +228,51 @@ class PropertyClaimControllerTest {
     }
 
     @Test
+    @Order(6)
+    void denyClaimTransitionsToRejectedWithReason() throws Exception {
+        // Submit a fresh claim (the shared one is already CLOSED) and drive it to PENDING_APPROVAL.
+        String fnol = """
+            {
+                "policyId": "demo-property-001",
+                "policyHolderId": "PH-001",
+                "incidentDescription": "Minor roof leak after a storm",
+                "incidentDate": 1750000000,
+                "propertyAddress": "744 Evergreen Terrace",
+                "propertyType": "SINGLE_FAMILY"
+            }
+            """;
+        MvcResult created = mockMvc.perform(post(BASE_URL)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(fnol))
+            .andExpect(status().isCreated())
+            .andReturn();
+        String denyClaimId = objectMapper.readValue(
+            created.getResponse().getContentAsString(), FnolResponse.class).claimId();
+
+        awaitStatus(denyClaimId, "PENDING_DAMAGE_ASSESSMENT");
+        mockMvc.perform(post(BASE_URL + "/" + denyClaimId + "/damage-assessment")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    { "summary": "Superficial water staining only.", "estimatedCost": 1200 }
+                    """))
+            .andExpect(status().isAccepted());
+        awaitStatus(denyClaimId, "PENDING_APPROVAL");
+
+        mockMvc.perform(post(BASE_URL + "/" + denyClaimId + "/deny")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    { "adjusterId": "adj-sarah", "reason": "Wear and tear, not a covered peril" }
+                    """))
+            .andExpect(status().isAccepted());
+
+        awaitStatus(denyClaimId, "REJECTED");
+        mockMvc.perform(get(BASE_URL + "/" + denyClaimId))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.status").value("REJECTED"))
+            .andExpect(jsonPath("$.rejectionReason").value("Wear and tear, not a covered peril"));
+    }
+
+    @Test
     @Order(100)
     void getNonExistentClaimReturns404() throws Exception {
         mockMvc.perform(get(BASE_URL + "/DOES-NOT-EXIST"))

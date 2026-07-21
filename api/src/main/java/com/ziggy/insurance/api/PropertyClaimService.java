@@ -4,6 +4,7 @@
 package com.ziggy.insurance.api;
 
 import com.ziggy.insurance.domains.claim.models.AdjusterApprovalRequest;
+import com.ziggy.insurance.domains.claim.models.AdjusterDenialRequest;
 import com.ziggy.insurance.domains.claim.models.ClaimStatus;
 import com.ziggy.insurance.domains.claim.models.DamageAssessmentResult;
 import com.ziggy.insurance.domains.claim.property.PropertyClaimInput;
@@ -93,6 +94,11 @@ public class PropertyClaimService {
     public void approvePropertyClaim(String claimId, AdjusterApprovalRequest request) {
         workflowClient.newWorkflowStub(PropertyClaimWorkflow.class, workflowId(claimId))
             .adjusterApproval(request);
+    }
+
+    public void denyPropertyClaim(String claimId, AdjusterDenialRequest request) {
+        workflowClient.newWorkflowStub(PropertyClaimWorkflow.class, workflowId(claimId))
+            .adjusterDenial(request);
     }
 
     public void submitDamageAssessment(String claimId, DamageAssessmentResult assessment) {

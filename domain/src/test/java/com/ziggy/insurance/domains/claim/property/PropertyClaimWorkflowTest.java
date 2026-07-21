@@ -6,6 +6,7 @@ package com.ziggy.insurance.domains.claim.property;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.ziggy.insurance.domains.claim.models.AdjusterApprovalRequest;
+import com.ziggy.insurance.domains.claim.models.AdjusterDenialRequest;
 import com.ziggy.insurance.domains.claim.models.ClaimStatus;
 import com.ziggy.insurance.domains.claim.models.DamageAssessmentResult;
 import com.ziggy.insurance.domains.claim.search.ClaimSearchAttributes;
@@ -150,6 +151,37 @@ class PropertyClaimWorkflowTest {
 
             PropertyClaimState rejected = awaitStatus(wf, ClaimStatus.REJECTED);
             assertThat(rejected.getRejectionReason()).isEqualTo("No property address on the claim");
+        }
+    }
+
+    @Test
+    void adjusterDenialRejectsWithReason() {
+        try (TestWorkflowEnvironment env = TestWorkflowEnvironment.newInstance()) {
+            registerSearchAttributes(env);
+            Worker worker = env.newWorker(TaskQueues.CLAIM_TASK_QUEUE);
+            worker.registerWorkflowImplementationTypes(PropertyClaimWorkflowImpl.class);
+            worker.registerActivitiesImplementations(new PropertyClaimActivitiesImpl());
+            registerNotifications(env);
+            registerPayment(env);
+            env.start();
+
+            PropertyClaimWorkflow wf = env.getWorkflowClient().newWorkflowStub(
+                PropertyClaimWorkflow.class, workflowOptions("claim/property/test-adjuster-denied"));
+            WorkflowClient.start(wf::run, testInput("CLM-ADJ-DENY-001", "742 Evergreen Terrace"));
+
+            // Advance to PENDING_APPROVAL, then the claims adjuster denies instead of approving.
+            awaitStatus(wf, ClaimStatus.PENDING_DAMAGE_ASSESSMENT);
+            wf.submitDamageAssessment(new DamageAssessmentResult(
+                "Moderate smoke and fire damage to the kitchen.", 18500));
+            awaitStatus(wf, ClaimStatus.PENDING_APPROVAL);
+
+            wf.adjusterDenial(new AdjusterDenialRequest("adj-sarah", "Peril not covered under HO3"));
+
+            PropertyClaimState rejected = WorkflowStub.fromTyped(wf).getResult(PropertyClaimState.class);
+            assertThat(rejected.getStatus()).isEqualTo(ClaimStatus.REJECTED);
+            assertThat(rejected.getRejectionReason()).isEqualTo("Peril not covered under HO3");
+            assertThat(rejected.getPaymentReference()).isNull();
+            assertThat(rejected.getClosedAt()).isPositive();
         }
     }
 

@@ -5,6 +5,7 @@ package com.ziggy.insurance.domains.claim.auto;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.ziggy.insurance.domains.claim.models.AdjusterApprovalRequest;
+import com.ziggy.insurance.domains.claim.models.AdjusterDenialRequest;
 import com.ziggy.insurance.domains.claim.models.ClaimStatus;
 import com.ziggy.insurance.domains.claim.models.DamageAssessmentResult;
 import com.ziggy.insurance.domains.claim.search.ClaimSearchAttributes;
@@ -147,6 +148,37 @@ class AutoClaimWorkflowTest {
 
             AutoClaimState rejected = awaitStatus(wf, ClaimStatus.REJECTED);
             assertThat(rejected.getRejectionReason()).isEqualTo("No vehicle VIN on the claim");
+        }
+    }
+
+    @Test
+    void adjusterDenialRejectsWithReason() {
+        try (TestWorkflowEnvironment env = TestWorkflowEnvironment.newInstance()) {
+            registerSearchAttributes(env);
+            Worker worker = env.newWorker(TaskQueues.CLAIM_TASK_QUEUE);
+            worker.registerWorkflowImplementationTypes(AutoClaimWorkflowImpl.class);
+            worker.registerActivitiesImplementations(new AutoClaimActivitiesImpl());
+            registerNotifications(env);
+            registerPayment(env);
+            env.start();
+
+            AutoClaimWorkflow wf = env.getWorkflowClient().newWorkflowStub(
+                AutoClaimWorkflow.class, workflowOptions("claim/auto/test-adjuster-denied"));
+            WorkflowClient.start(wf::run, testInput("CLM-ADJ-DENY-001", "1HGFE2F59NH000001"));
+
+            // Advance to PENDING_APPROVAL, then the claims adjuster denies instead of approving.
+            awaitStatus(wf, ClaimStatus.PENDING_DAMAGE_ASSESSMENT);
+            wf.submitDamageAssessment(new DamageAssessmentResult(
+                "Moderate front-end collision damage.", 4200));
+            awaitStatus(wf, ClaimStatus.PENDING_APPROVAL);
+
+            wf.adjusterDenial(new AdjusterDenialRequest("adj-sarah", "Damage predates the policy"));
+
+            AutoClaimState rejected = WorkflowStub.fromTyped(wf).getResult(AutoClaimState.class);
+            assertThat(rejected.getStatus()).isEqualTo(ClaimStatus.REJECTED);
+            assertThat(rejected.getRejectionReason()).isEqualTo("Damage predates the policy");
+            assertThat(rejected.getPaymentReference()).isNull();
+            assertThat(rejected.getClosedAt()).isPositive();
         }
     }
 

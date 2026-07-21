@@ -6,6 +6,7 @@ import com.ziggy.insurance.domains.claim.auto.AutoClaimInput;
 import com.ziggy.insurance.domains.claim.auto.AutoClaimState;
 import com.ziggy.insurance.domains.claim.auto.AutoClaimWorkflow;
 import com.ziggy.insurance.domains.claim.models.AdjusterApprovalRequest;
+import com.ziggy.insurance.domains.claim.models.AdjusterDenialRequest;
 import com.ziggy.insurance.domains.claim.models.ClaimStatus;
 import com.ziggy.insurance.domains.claim.models.DamageAssessmentResult;
 import com.ziggy.insurance.domains.claim.search.ClaimSearchAttributes;
@@ -82,6 +83,11 @@ public class ClaimService {
     public void approveAutoClaim(String claimId, AdjusterApprovalRequest request) {
         workflowClient.newWorkflowStub(AutoClaimWorkflow.class, workflowId(claimId))
             .adjusterApproval(request);
+    }
+
+    public void denyAutoClaim(String claimId, AdjusterDenialRequest request) {
+        workflowClient.newWorkflowStub(AutoClaimWorkflow.class, workflowId(claimId))
+            .adjusterDenial(request);
     }
 
     public void submitDamageAssessment(String claimId, DamageAssessmentResult assessment) {

@@ -5,6 +5,7 @@
 package com.ziggy.insurance.domains.claim.property;
 
 import com.ziggy.insurance.domains.claim.models.AdjusterApprovalRequest;
+import com.ziggy.insurance.domains.claim.models.AdjusterDenialRequest;
 import com.ziggy.insurance.domains.claim.models.ClaimStatus;
 import com.ziggy.insurance.domains.claim.models.CoverageVerificationResult;
 import com.ziggy.insurance.domains.claim.models.DamageAssessmentResult;
@@ -30,6 +31,7 @@ public class PropertyClaimWorkflowImpl implements PropertyClaimWorkflow {
     private PropertyClaimState state;
     private boolean damageAssessed = false;
     private boolean adjusterApproved = false;
+    private boolean adjusterDenied = false;
     private PropertyClaimActivities activities;
 
     // Notifications live in their own domain; the claim reaches them across a Nexus boundary
@@ -98,8 +100,17 @@ public class PropertyClaimWorkflowImpl implements PropertyClaimWorkflow {
         Workflow.await(() -> damageAssessed);
 
         // Durable wait: the claim can sit here for minutes or days holding no resources.
+        // The claims adjuster either approves the payout or denies the claim.
         updateStatus(ClaimStatus.PENDING_APPROVAL);
-        Workflow.await(() -> adjusterApproved);
+        Workflow.await(() -> adjusterApproved || adjusterDenied);
+
+        // Denial is terminal: the rejection reason is already on state; close out as REJECTED,
+        // reusing the same terminal + notification path as a coverage denial at intake.
+        if (adjusterDenied) {
+            state.setClosedAt(Workflow.currentTimeMillis());
+            updateStatus(ClaimStatus.REJECTED);
+            return this.state;
+        }
 
         updateStatus(ClaimStatus.PAYMENT_PROCESSING);
         PaymentResult payment = payments.processPayment(new PaymentRequest(
@@ -117,6 +128,12 @@ public class PropertyClaimWorkflowImpl implements PropertyClaimWorkflow {
         state.setApprovedPayoutAmount(request.approvedPayoutAmount());
         state.setApprovedAt(Workflow.currentTimeMillis());
         adjusterApproved = true;
+    }
+
+    @Override
+    public void adjusterDenial(AdjusterDenialRequest request) {
+        state.setRejectionReason(request.reason());
+        adjusterDenied = true;
     }
 
     @Override

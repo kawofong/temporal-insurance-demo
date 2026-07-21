@@ -355,6 +355,13 @@
   color: var(--text-muted);
 }
 
+/* Deny Claim is the destructive outcome (red) in the claims adjuster review form. */
+.policy-action-form .admin-deny-button {
+  border-color: var(--danger);
+  color: var(--danger);
+  margin-left: auto;
+}
+
 /* Stack the tab rail on top of the content on narrow screens */
 @media (max-width: 640px) {
   .admin-modal-body {
