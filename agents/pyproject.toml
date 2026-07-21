@@ -9,7 +9,7 @@ readme = "README.md"
 dependencies = ["temporalio[openai-agents,opentelemetry]>=1.30.0,<2"]
 
 [tool.hatch.build.targets.wheel]
-packages = ["field_adjuster"]
+packages = ["field_adjuster", "claim_adjuster"]
 
 [build-system]
 requires = ["hatchling"]

@@ -70,6 +70,11 @@ description = "Submit a sample claim to the field-adjuster agent and print its r
 dir = "agents"
 run = "uv run python -m field_adjuster.starter"
 
+[tasks."agents:claim:starter"]
+description = "Submit a sample claim + policy to the claim-adjuster agent and print its determination"
+dir = "agents"
+run = "uv run python -m claim_adjuster.starter"
+
 [tasks."slides"]
 description = "Build presentation slides to docs/presentations"
 run = "marp docs/presentations/presentation.md --html --output docs/presentations/presentation.html"
