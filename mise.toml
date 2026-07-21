@@ -3,6 +3,8 @@ java = "21.0.2"
 gradle = "8.14.4"
 node = "22"
 temporal = "1.30.5"
+python = "3.12"
+uv = "latest"
 "npm:@marp-team/marp-cli" = "4.4.0"
 
 [tasks."temporal:dev"]
@@ -52,6 +54,21 @@ run = "npm run dev"
 description = "Build portal for production"
 dir = "app"
 run = "npm run build"
+
+[tasks."agents:install"]
+description = "Install Python agent dependencies with uv"
+dir = "agents"
+run = "uv sync"
+
+[tasks."agents:adjuster:worker"]
+description = "Run the field-adjuster AI agent worker (requires a local Ollama server)"
+dir = "agents"
+run = "uv run python -m field_adjuster.worker"
+
+[tasks."agents:adjuster:starter"]
+description = "Submit a sample claim to the field-adjuster agent and print its report"
+dir = "agents"
+run = "uv run python -m field_adjuster.starter"
 
 [tasks."slides"]
 description = "Build presentation slides to docs/presentations"

@@ -1,0 +1,16 @@
+# uv project definition for the Temporal Python agents.
+# Declares the temporalio SDK (with OpenAI Agents integration) dependency.
+[project]
+name = "temporal-agents"
+version = "0.1.0"
+description = "Temporal Python AI agents for the insurance demo"
+requires-python = ">=3.12"
+readme = "README.md"
+dependencies = ["temporalio[openai-agents,opentelemetry]>=1.30.0,<2"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["field_adjuster"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

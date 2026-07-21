@@ -30,3 +30,11 @@ replay_pid*
 # Temporal Cloud secrets (loaded by mise when MISE_ENV=cloud). Never commit real credentials;
 # see .env.cloud.example for the template.
 .env.cloud
+
+# Python (agents/)
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
