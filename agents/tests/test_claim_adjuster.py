@@ -1,4 +1,4 @@
-"""Unit tests for the repurposed claim-adjuster agent (spec §6.4).
+"""Unit tests for the claim-adjuster agent (spec §6.4).
 
 The approve/deny decision itself is made by the LLM, so it is exercised end-to-end by the mise
 demo tasks. Here we cover the deterministic, non-LLM pieces: the request model shape (no policy
@@ -43,7 +43,7 @@ def test_request_carries_claim_coverage_assessment_and_no_policy() -> None:
     assert request.claim.claim_id == "clm-xyz"
     assert request.coverage.covered is True
     assert request.assessment.estimated_cost == 24_500
-    # The repurposed request must not carry policy state (feedback #4 / §6.4).
+    # The request must not carry policy state (§6.4).
     assert "policy" not in ClaimAdjudicationRequest.model_fields
 
 

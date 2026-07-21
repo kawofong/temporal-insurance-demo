@@ -23,8 +23,6 @@ public class PropertyPolicyWorkflowImpl implements PropertyPolicyWorkflow {
         updateStatus(PolicyStatus.CANCELLED);
     }
 
-    // --- Lifecycle signals ---
-
     @Override
     public void activatePolicy() {
         updateStatus(PolicyStatus.ACTIVE);
@@ -63,13 +61,12 @@ public class PropertyPolicyWorkflowImpl implements PropertyPolicyWorkflow {
         cancelled = true;
     }
 
-    // Applies a lifecycle transition and mirrors the new status to the policyStatus search attribute.
+    // Every status change is mirrored into the policyStatus search attribute so policies stay
+    // filterable by status in Visibility (the list-policies query).
     private void updateStatus(PolicyStatus status) {
         state.setStatus(status);
         PolicySearchAttributes.upsertPolicyStatus(status);
     }
-
-    // --- Loss payee updates (with validators) ---
 
     @Override
     public int addLossPayee(LossPayee lossPayee) {
@@ -101,8 +98,6 @@ public class PropertyPolicyWorkflowImpl implements PropertyPolicyWorkflow {
                 "No loss payee " + lossPayeeId + " on this policy");
         }
     }
-
-    // --- Query ---
 
     @Override
     public PropertyPolicyState getPolicy() {

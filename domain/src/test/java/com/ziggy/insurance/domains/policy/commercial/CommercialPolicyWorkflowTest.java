@@ -40,8 +40,6 @@ class CommercialPolicyWorkflowTest {
             .build();
     }
 
-    // --- Lifecycle tests ---
-
     @Test
     void startsPolicyInActiveState() {
         try (TestWorkflowEnvironment env = TestWorkflowEnvironment.newInstance()) {
@@ -113,8 +111,6 @@ class CommercialPolicyWorkflowTest {
             WorkflowStub.fromTyped(wf).getResult(Void.class);
         }
     }
-
-    // --- Additional insured update tests ---
 
     @Test
     void addAdditionalInsuredReturnsCount() {

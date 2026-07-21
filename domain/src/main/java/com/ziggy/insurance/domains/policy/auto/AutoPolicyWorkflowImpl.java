@@ -24,8 +24,6 @@ public class AutoPolicyWorkflowImpl implements AutoPolicyWorkflow {
         updateStatus(PolicyStatus.CANCELLED);
     }
 
-    // --- Vehicle updates (with validators) ---
-
     @Override
     public int addVehicle(Vehicle vehicle) {
         state.getInsuredVehicles().add(vehicle);
@@ -57,8 +55,6 @@ public class AutoPolicyWorkflowImpl implements AutoPolicyWorkflow {
         }
     }
 
-    // --- Driver signals ---
-
     @Override
     public void addDriver(Driver driver) {
         state.getListedDrivers().add(driver);
@@ -68,8 +64,6 @@ public class AutoPolicyWorkflowImpl implements AutoPolicyWorkflow {
     public void removeDriver(String driverId) {
         state.getListedDrivers().removeIf(d -> d.driverId().equals(driverId));
     }
-
-    // --- Lifecycle signals ---
 
     @Override
     public void activatePolicy() {
@@ -109,14 +103,13 @@ public class AutoPolicyWorkflowImpl implements AutoPolicyWorkflow {
         }
     }
 
-    // --- Query ---
-
     @Override
     public AutoPolicyState getPolicy() {
         return state;
     }
 
-    // Applies a lifecycle transition and mirrors the new status to the policyStatus search attribute.
+    // Every status change is mirrored into the policyStatus search attribute so policies stay
+    // filterable by status in Visibility (the list-policies query).
     private void updateStatus(PolicyStatus status) {
         state.setStatus(status);
         PolicySearchAttributes.upsertPolicyStatus(status);

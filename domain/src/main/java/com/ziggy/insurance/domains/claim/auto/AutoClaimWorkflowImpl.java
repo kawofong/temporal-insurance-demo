@@ -71,7 +71,7 @@ public class AutoClaimWorkflowImpl implements AutoClaimWorkflow {
         ClaimSearchAttributes.upsertPolicyId(input.policyId());
         ClaimSearchAttributes.upsertPolicyHolderId(input.policyHolderId());
 
-        // Local claim activities (coverage, adjuster). Payment now lives in the payment domain
+        // Local claim activities (coverage, adjuster). Payment lives in the payment domain
         // and is triggered over Nexus, not through this stub.
         this.activities = Workflow.newActivityStub(
             AutoClaimActivities.class,

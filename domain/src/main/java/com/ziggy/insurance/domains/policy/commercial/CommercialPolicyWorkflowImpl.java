@@ -23,8 +23,6 @@ public class CommercialPolicyWorkflowImpl implements CommercialPolicyWorkflow {
         updateStatus(PolicyStatus.CANCELLED);
     }
 
-    // --- Lifecycle signals ---
-
     @Override
     public void activatePolicy() {
         updateStatus(PolicyStatus.ACTIVE);
@@ -63,13 +61,12 @@ public class CommercialPolicyWorkflowImpl implements CommercialPolicyWorkflow {
         cancelled = true;
     }
 
-    // Applies a lifecycle transition and mirrors the new status to the policyStatus search attribute.
+    // Every status change is mirrored into the policyStatus search attribute so policies stay
+    // filterable by status in Visibility (the list-policies query).
     private void updateStatus(PolicyStatus status) {
         state.setStatus(status);
         PolicySearchAttributes.upsertPolicyStatus(status);
     }
-
-    // --- Additional insured updates (with validators) ---
 
     @Override
     public int addAdditionalInsured(AdditionalInsured additionalInsured) {
@@ -101,8 +98,6 @@ public class CommercialPolicyWorkflowImpl implements CommercialPolicyWorkflow {
                 "No additional insured " + additionalInsuredId + " on this policy");
         }
     }
-
-    // --- Query ---
 
     @Override
     public CommercialPolicyState getPolicy() {

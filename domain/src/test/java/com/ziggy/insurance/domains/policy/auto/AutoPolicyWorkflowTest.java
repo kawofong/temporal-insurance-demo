@@ -38,8 +38,6 @@ class AutoPolicyWorkflowTest {
             .build();
     }
 
-    // --- Lifecycle tests ---
-
     @Test
     void startsPolicyInActiveState() {
         try (TestWorkflowEnvironment env = TestWorkflowEnvironment.newInstance()) {
@@ -220,7 +218,6 @@ class AutoPolicyWorkflowTest {
 
             wf.cancelPolicy("policyholder request");
 
-            // Wait for workflow to complete
             WorkflowStub untypedStub = WorkflowStub.fromTyped(wf);
             untypedStub.getResult(Void.class);
         }
@@ -242,13 +239,10 @@ class AutoPolicyWorkflowTest {
             wf.suspendPolicy("non-payment");
             assertThat(wf.getPolicy().getStatus()).isEqualTo(PolicyStatus.SUSPENDED);
 
-            // Verify suspend works, but once cancelled, status becomes CANCELLED
             wf.cancelPolicy("done");
             WorkflowStub.fromTyped(wf).getResult(Void.class);
         }
     }
-
-    // --- Vehicle update tests ---
 
     @Test
     void addVehicleReturnsUpdatedCount() {
@@ -341,8 +335,6 @@ class AutoPolicyWorkflowTest {
             wf.cancelPolicy("done");
         }
     }
-
-    // --- Driver signal tests ---
 
     @Test
     void addDriverSignalAddsDriver() {

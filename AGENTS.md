@@ -56,6 +56,22 @@ First-time frontend setup: `mise run portal:install`.
 mise run test
 ```
 
+## Code comments
+
+Comments explain **WHY, not WHAT**. The code already says what it does; a comment earns its
+place only by capturing intent the code cannot: rationale, non-obvious constraints, trade-offs,
+gotchas, references to a spec/decision, units/nullability, or a warning that something
+surprising is intentional.
+
+- **Remove** comments that merely restate the code (`// increment i`, `// getter for status`,
+  step-by-step narration of self-evident logic, section dividers that only label an obvious block).
+- **Keep / add** WHY comments — especially Temporal-specific rationale: child-workflow-vs-activity
+  choices, Nexus routing, search-attribute registration, and "looks wrong but is intentional" notes.
+- **File headers stay.** Every code file opens with a brief 2-line comment describing what the file
+  does; that is a separate, deliberate convention and is not subject to the WHY-not-WHAT rule.
+- Keep comments **evergreen** — describe the code as it is, not how it changed ("now", "previously",
+  "refactored to…", PR/ticket numbers).
+
 ## Project conventions & gotchas
 
 - Temporal Workflow IDs: policies `policy/{auto|property|commercial}/{policyId}`,

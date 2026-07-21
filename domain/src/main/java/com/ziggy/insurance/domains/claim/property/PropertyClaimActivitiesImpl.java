@@ -16,7 +16,6 @@ public class PropertyClaimActivitiesImpl implements PropertyClaimActivities {
 
     @Override
     public CoverageVerificationResult verifyCoverage(String policyId, String propertyAddress) {
-        // Artificial 500-1000 ms delay so the demo shows realistic downstream latency.
         simulateProcessingDelay();
         if (propertyAddress == null || propertyAddress.isBlank()) {
             return new CoverageVerificationResult(
@@ -30,7 +29,6 @@ public class PropertyClaimActivitiesImpl implements PropertyClaimActivities {
 
     @Override
     public String assignAdjuster(String claimId) {
-        // Artificial 500-1000 ms delay so the demo shows realistic downstream latency.
         simulateProcessingDelay();
         // Demo stand-in: a real impl would assign an adjuster; here we use a fixed id.
         return DEFAULT_ADJUSTER_ID;
@@ -38,7 +36,6 @@ public class PropertyClaimActivitiesImpl implements PropertyClaimActivities {
 
     @Override
     public void dispatchFieldAdjuster(String claimId, String adjusterId) {
-        // Artificial 500-1000 ms delay so the demo shows realistic downstream latency.
         simulateProcessingDelay();
         // Demo stand-in: a real impl would notify the field adjuster app to inspect the property.
     }

@@ -77,6 +77,8 @@ export function formatDate(value) {
   if (value === null || value === undefined || value === "") return "Not provided";
 
   const numericValue = Number(value);
+  // Values below 1e10 are epoch seconds (1e10s ≈ year 2286); scale them to
+  // milliseconds. Larger numbers are already epoch milliseconds.
   const date = Number.isFinite(numericValue)
     ? new Date(numericValue < 10000000000 ? numericValue * 1000 : numericValue)
     : new Date(value);

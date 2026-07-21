@@ -13,8 +13,7 @@ import java.time.Duration;
 @WorkflowImpl(taskQueues = PaymentNexus.TASK_QUEUE)
 public class PaymentWorkflowImpl implements PaymentWorkflow {
 
-    // No RetryOptions set — the default retry policy is what drives the flaky gateway to success,
-    // mirroring how the claim workflow used to retry its local processPayment activity.
+    // No RetryOptions set — the default retry policy is what drives the flaky gateway to eventual success.
     private final PaymentActivities activities = Workflow.newActivityStub(
         PaymentActivities.class,
         ActivityOptions.newBuilder()

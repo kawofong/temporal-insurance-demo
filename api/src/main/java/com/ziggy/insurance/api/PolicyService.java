@@ -38,14 +38,12 @@ public class PolicyService {
         this.workflowClient = workflowClient;
     }
 
-    // --- Workflow ID conventions ---
-
     public static String workflowId(String type, String policyId) {
         return "policy/" + type + "/" + policyId;
     }
 
     // Generates a system-assigned identifier for a policy line item (driver, loss
-    // payee, additional insured). Callers no longer need to supply these ids.
+    // payee, additional insured). Callers need not supply these ids.
     private static String generateEntityId(String prefix) {
         return (prefix + "-" + UUID.randomUUID().toString().substring(0, 8)).toLowerCase();
     }
@@ -53,8 +51,6 @@ public class PolicyService {
     private static boolean hasText(String value) {
         return value != null && !value.isBlank();
     }
-
-    // --- Auto policy ---
 
     public String createAutoPolicy(AutoPolicyInput input) {
         String wfId = workflowId("auto", input.policyId());
@@ -101,8 +97,6 @@ public class PolicyService {
         wf.removeDriver(driverId);
     }
 
-    // --- Property policy ---
-
     public String createPropertyPolicy(PropertyPolicyInput input) {
         String wfId = workflowId("property", input.policyId());
         PropertyPolicyWorkflow wf = workflowClient.newWorkflowStub(
@@ -135,8 +129,6 @@ public class PolicyService {
             PropertyPolicyWorkflow.class, workflowId("property", policyId));
         wf.removeLossPayee(lossPayeeId);
     }
-
-    // --- Commercial policy ---
 
     public String createCommercialPolicy(CommercialPolicyInput input) {
         String wfId = workflowId("commercial", input.policyId());
@@ -171,8 +163,6 @@ public class PolicyService {
             CommercialPolicyWorkflow.class, workflowId("commercial", policyId));
         wf.removeAdditionalInsured(additionalInsuredId);
     }
-
-    // --- Lifecycle signals (shared across all types) ---
 
     public void suspendAutoPolicy(String policyId, String reason) {
         workflowClient.newWorkflowStub(AutoPolicyWorkflow.class,
@@ -249,8 +239,6 @@ public class PolicyService {
             workflowId("commercial", policyId)).completeRenewal();
     }
 
-    // --- Demo setup ---
-
     public DemoSetupResult setupDemoEnvironment() {
         SetupDemoEnvironmentWorkflow wf = workflowClient.newWorkflowStub(
             SetupDemoEnvironmentWorkflow.class,
@@ -260,8 +248,6 @@ public class PolicyService {
                 .build());
         return wf.run();
     }
-
-    // --- List policies ---
 
     public PolicyListResponse listAllPolicies() {
         return listPolicies(null);

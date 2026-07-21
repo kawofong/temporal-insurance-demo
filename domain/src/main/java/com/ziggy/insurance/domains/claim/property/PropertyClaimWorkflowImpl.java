@@ -72,7 +72,7 @@ public class PropertyClaimWorkflowImpl implements PropertyClaimWorkflow {
         ClaimSearchAttributes.upsertPolicyId(input.policyId());
         ClaimSearchAttributes.upsertPolicyHolderId(input.policyHolderId());
 
-        // Local claim activities (coverage, adjuster). Payment now lives in the payment domain
+        // Local claim activities (coverage, adjuster). Payment lives in the payment domain
         // and is triggered over Nexus, not through this stub.
         this.activities = Workflow.newActivityStub(
             PropertyClaimActivities.class,
@@ -102,20 +102,12 @@ public class PropertyClaimWorkflowImpl implements PropertyClaimWorkflow {
 
         activities.dispatchFieldAdjuster(state.getClaimId(), adjusterId);
 
-        // ── Seam A: damage assessment ─────────────────────────────────────────────────────
-        // Durable wait: by default the field adjuster submits their assessment via a Signal.
-        // The `|| aiAdjusterEnabled` term lets a claim parked here break out the instant the
-        // enableAiAdjuster signal arrives, at which point the field-adjuster agent assesses it.
         updateStatus(ClaimStatus.PENDING_DAMAGE_ASSESSMENT);
         Workflow.await(() -> damageAssessed || state.isAiAdjusterEnabled());
         if (!damageAssessed && state.isAiAdjusterEnabled()) {
             runFieldAdjusterAgent(coverage);
         }
 
-        // ── Seam B: approval / denial ─────────────────────────────────────────────────────
-        // Durable wait: the claim can sit here for minutes or days holding no resources. By
-        // default a human claims adjuster approves the payout or denies the claim; if AI is
-        // enabled (here or carried over from Seam A) the claim-adjuster agent decides instead.
         updateStatus(ClaimStatus.PENDING_APPROVAL);
         Workflow.await(() -> adjusterApproved || adjusterDenied || state.isAiAdjusterEnabled());
         if (!adjusterApproved && !adjusterDenied && state.isAiAdjusterEnabled()) {

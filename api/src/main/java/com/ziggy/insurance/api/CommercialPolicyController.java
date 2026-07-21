@@ -37,8 +37,6 @@ public class CommercialPolicyController {
         return policyService.getCommercialPolicy(policyId);
     }
 
-    // --- Additional insured updates ---
-
     @PostMapping("/{policyId}/additional-insureds")
     public CountResponse addAdditionalInsured(
             @PathVariable String policyId, @RequestBody AdditionalInsured additionalInsured) {
@@ -52,8 +50,6 @@ public class CommercialPolicyController {
         policyService.removeAdditionalInsured(policyId, additionalInsuredId);
         return ResponseEntity.ok().build();
     }
-
-    // --- Lifecycle signals ---
 
     @PostMapping("/{policyId}/suspend")
     public ResponseEntity<Void> suspend(

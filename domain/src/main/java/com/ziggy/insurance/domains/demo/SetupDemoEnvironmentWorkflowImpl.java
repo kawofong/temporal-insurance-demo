@@ -21,8 +21,6 @@ import java.util.List;
 @WorkflowImpl(taskQueues = "policy-task-queue")
 public class SetupDemoEnvironmentWorkflowImpl implements SetupDemoEnvironmentWorkflow {
 
-    // --- Static demo data ---
-
     private static final String POLICY_HOLDER_ID = "jake-from-state-farm";
 
     private static final String AUTO_POLICY_ID = "demo-auto-001";
@@ -66,8 +64,6 @@ public class SetupDemoEnvironmentWorkflowImpl implements SetupDemoEnvironmentWor
             new AdditionalInsured("AI-DEMO-001", "Spaceport Commerce Center LLC", "LANDLORD")
         )
     );
-
-    // --- Activity stub ---
 
     private final DemoSetupActivities activities = Workflow.newActivityStub(
         DemoSetupActivities.class,

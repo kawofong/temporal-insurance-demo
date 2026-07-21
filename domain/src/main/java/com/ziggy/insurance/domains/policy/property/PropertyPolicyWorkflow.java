@@ -16,7 +16,7 @@ public interface PropertyPolicyWorkflow {
     @WorkflowMethod
     void run(PropertyPolicyInput input);
 
-    // Updates — loss payee management
+    // Updates — caller gets return value or rejection
 
     @UpdateMethod
     int addLossPayee(LossPayee lossPayee);
@@ -30,7 +30,7 @@ public interface PropertyPolicyWorkflow {
     @UpdateValidatorMethod(updateName = "removeLossPayee")
     void validateRemoveLossPayee(String lossPayeeId);
 
-    // Signals — lifecycle transitions
+    // Signals — fire-and-forget
 
     @SignalMethod
     void activatePolicy();
@@ -50,7 +50,7 @@ public interface PropertyPolicyWorkflow {
     @SignalMethod
     void completeRenewal();
 
-    // Query
+    // Query — read-only state retrieval
 
     @QueryMethod
     PropertyPolicyState getPolicy();

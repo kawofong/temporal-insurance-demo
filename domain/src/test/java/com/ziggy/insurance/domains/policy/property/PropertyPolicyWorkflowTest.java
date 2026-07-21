@@ -42,8 +42,6 @@ class PropertyPolicyWorkflowTest {
             .build();
     }
 
-    // --- Lifecycle tests ---
-
     @Test
     void startsPolicyInActiveState() {
         try (TestWorkflowEnvironment env = TestWorkflowEnvironment.newInstance()) {
@@ -115,8 +113,6 @@ class PropertyPolicyWorkflowTest {
             WorkflowStub.fromTyped(wf).getResult(Void.class);
         }
     }
-
-    // --- Loss payee update tests ---
 
     @Test
     void addLossPayeeReturnsCount() {

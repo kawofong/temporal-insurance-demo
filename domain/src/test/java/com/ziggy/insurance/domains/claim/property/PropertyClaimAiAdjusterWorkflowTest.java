@@ -102,8 +102,6 @@ class PropertyClaimAiAdjusterWorkflowTest {
         }
     }
 
-    // ── Fixtures ────────────────────────────────────────────────────────────────────────────
-
     private PropertyClaimInput portalInput(String claimId) {
         return new PropertyClaimInput(
             claimId, "demo-property-001", "PH-001",
@@ -181,8 +179,6 @@ class PropertyClaimAiAdjusterWorkflowTest {
         assertThat(state.getStatus()).isEqualTo(expected);
         return state;
     }
-
-    // ── Tests ───────────────────────────────────────────────────────────────────────────────
 
     @Test
     void enableWhileParkedAtDamageAssessmentRunsBothAgentsAndCloses() {

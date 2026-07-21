@@ -111,8 +111,6 @@ class AgentSerializationContractTest {
         assertThat(report.toDenialRequest().reason()).isEqualTo("not covered");
     }
 
-    // ── Helpers ─────────────────────────────────────────────────────────────────────────────
-
     private void assertSerialisationMatches(Object javaValue, String fixture) {
         String wire = GlobalDataConverter.get().toPayload(javaValue).orElseThrow()
             .getData().toStringUtf8();

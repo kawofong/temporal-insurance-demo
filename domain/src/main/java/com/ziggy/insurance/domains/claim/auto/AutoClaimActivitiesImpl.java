@@ -16,7 +16,6 @@ public class AutoClaimActivitiesImpl implements AutoClaimActivities {
 
     @Override
     public CoverageVerificationResult verifyCoverage(String policyId, String vehicleVin) {
-        // Artificial 100-500 ms delay so the demo shows realistic downstream latency.
         simulateProcessingDelay();
         if (vehicleVin == null || vehicleVin.isBlank()) {
             return new CoverageVerificationResult(
@@ -29,7 +28,6 @@ public class AutoClaimActivitiesImpl implements AutoClaimActivities {
 
     @Override
     public String assignAdjuster(String claimId) {
-        // Artificial 100-500 ms delay so the demo shows realistic downstream latency.
         simulateProcessingDelay();
         // Demo stand-in: a real impl would assign an adjuster; here we use a fixed id.
         return DEFAULT_ADJUSTER_ID;
@@ -37,7 +35,6 @@ public class AutoClaimActivitiesImpl implements AutoClaimActivities {
 
     @Override
     public void dispatchFieldAdjuster(String claimId, String adjusterId) {
-        // Artificial 100-500 ms delay so the demo shows realistic downstream latency.
         simulateProcessingDelay();
         // Demo stand-in: a real impl would notify the field adjuster app to inspect the vehicle.
     }
