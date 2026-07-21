@@ -1,17 +1,9 @@
 # Starter script for the field-adjuster agent.
 # Submits a sample property claim to the workflow and prints the adjuster's report.
 import asyncio
-from datetime import timedelta
 
-from temporalio.client import Client
-from temporalio.contrib.openai_agents import ModelActivityParameters, OpenAIAgentsPlugin
-
+from agent_runtime import TASK_QUEUE, connect
 from field_adjuster.agent_workflow import FieldAdjusterWorkflow
-from field_adjuster.config import (
-    TASK_QUEUE,
-    OllamaModelProvider,
-    configure_openai_for_ollama,
-)
 from field_adjuster.models import (
     CoverageVerificationResult,
     DamageTier,
@@ -47,20 +39,7 @@ SAMPLE_REQUEST = FieldAdjusterRequest(
 
 
 async def main() -> None:
-    configure_openai_for_ollama()
-
-    client = await Client.connect(
-        "localhost:7233",
-        namespace="default",
-        plugins=[
-            OpenAIAgentsPlugin(
-                model_provider=OllamaModelProvider(),
-                model_params=ModelActivityParameters(
-                    start_to_close_timeout=timedelta(seconds=120)
-                ),
-            ),
-        ],
-    )
+    client = await connect()
 
     report = await client.execute_workflow(
         FieldAdjusterWorkflow.run,

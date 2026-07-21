@@ -3,6 +3,19 @@
 Python AI agents for the insurance demo, managed with
 [`uv`](https://docs.astral.sh/uv/).
 
+A single shared worker hosts every agent workflow. Shared runtime lives at the top level;
+each agent is its own package.
+
+```
+agents/
+├── agent_runtime.py   # shared Ollama model provider, plugin config, client factory, task queue
+├── worker.py          # shared worker — registers every agent workflow (see WORKFLOWS)
+└── field_adjuster/    # the field-adjuster agent (see below)
+```
+
+To add a new agent: create its package with an `agent_workflow.py` and a `starter.py`, then
+add its workflow to the `WORKFLOWS` list in `worker.py`.
+
 # Field Adjuster Agent
 
 An AI agent that automates the property field-adjuster role: given a claim and its
@@ -17,9 +30,7 @@ Java services.
 ```
 field_adjuster/
 ├── models.py          # claim data model, ported from the Java property-claim domain
-├── config.py          # Ollama model provider + task queue
 ├── agent_workflow.py  # FieldAdjusterWorkflow (runs the agent)
-├── worker.py          # worker with the OpenAI Agents plugin
 └── starter.py         # submits a sample claim, prints the report
 ```
 
@@ -37,14 +48,14 @@ field_adjuster/
 - Dependencies installed: `mise run agents:install` (or `cd agents && uv sync`).
 
 The Ollama endpoint (`OLLAMA_BASE_URL`, default `http://localhost:11434/v1`) and model
-(`FIELD_ADJUSTER_MODEL`, default `minicpm-v4.6:1b`) can be overridden via env vars.
+(`AGENTS_MODEL`, default `minicpm-v4.6:1b`) can be overridden via env vars.
 
 ## Run
 
-In one terminal, start the worker:
+In one terminal, start the shared agents worker:
 
 ```bash
-mise run agents:adjuster:worker
+mise run agents:worker
 ```
 
 In another terminal, submit the sample claim:

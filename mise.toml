@@ -60,10 +60,10 @@ description = "Install Python agent dependencies with uv"
 dir = "agents"
 run = "uv sync"
 
-[tasks."agents:adjuster:worker"]
-description = "Run the field-adjuster AI agent worker (requires a local Ollama server)"
+[tasks."agents:worker"]
+description = "Run the shared Temporal AI agents worker (requires a local Ollama server)"
 dir = "agents"
-run = "uv run python -m field_adjuster.worker"
+run = "uv run python -m worker"
 
 [tasks."agents:adjuster:starter"]
 description = "Submit a sample claim to the field-adjuster agent and print its report"
