@@ -1,0 +1,8 @@
+{
+  "approved": true,
+  "approved_payout_amount": 23500,
+  "adjuster_id": "adj-ai-agent",
+  "notes": "Covered peril; repair cost exceeds the deductible.",
+  "rejection_reason": null,
+  "rationale": "Coverage is verified and the assessed repair cost exceeds the deductible, so the payout is approved."
+}

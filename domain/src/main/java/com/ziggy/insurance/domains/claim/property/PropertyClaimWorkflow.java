@@ -25,6 +25,13 @@ public interface PropertyClaimWorkflow {
     @SignalMethod
     void submitDamageAssessment(DamageAssessmentResult assessment);
 
+    // One-way enable: routes the still-pending adjuster decisions to the AI agents instead of
+    // waiting on a human. Idempotent and safe to send at any point while the claim is open and
+    // running — including while it is durably parked at PENDING_DAMAGE_ASSESSMENT or
+    // PENDING_APPROVAL. There is no disable; a decision already taken by an agent is not undone.
+    @SignalMethod
+    void enableAiAdjuster();
+
     @QueryMethod
     PropertyClaimState getClaim();
 }

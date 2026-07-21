@@ -25,6 +25,12 @@ public class PropertyClaimState {
     private String incidentDescription;
     private long incidentDate;
     private String propertyAddress;
+    private String propertyType;      // SINGLE_FAMILY | CONDO | RENTER
+
+    // ── AI adjuster mode (observability for AI-vs-human dashboards) ─
+    // One-way flag: once enabled (via the enableAiAdjuster signal or the intake flag) the
+    // still-pending adjuster decisions route to the AI agents instead of waiting on a human.
+    private boolean aiAdjusterEnabled;
 
     // ── Coverage (populated by verifyCoverage) ────────────────────
     private String coverageType;      // e.g. HO3 | HO6 | RENTERS
@@ -57,6 +63,8 @@ public class PropertyClaimState {
         s.incidentDescription = input.incidentDescription();
         s.incidentDate = input.incidentDate();
         s.propertyAddress = input.propertyAddress();
+        s.propertyType = input.propertyType();
+        s.aiAdjusterEnabled = input.aiAdjusterEnabled();
         return s;
     }
 
@@ -89,6 +97,12 @@ public class PropertyClaimState {
 
     public String getPropertyAddress() { return propertyAddress; }
     public void setPropertyAddress(String propertyAddress) { this.propertyAddress = propertyAddress; }
+
+    public String getPropertyType() { return propertyType; }
+    public void setPropertyType(String propertyType) { this.propertyType = propertyType; }
+
+    public boolean isAiAdjusterEnabled() { return aiAdjusterEnabled; }
+    public void setAiAdjusterEnabled(boolean aiAdjusterEnabled) { this.aiAdjusterEnabled = aiAdjusterEnabled; }
 
     public String getCoverageType() { return coverageType; }
     public void setCoverageType(String coverageType) { this.coverageType = coverageType; }

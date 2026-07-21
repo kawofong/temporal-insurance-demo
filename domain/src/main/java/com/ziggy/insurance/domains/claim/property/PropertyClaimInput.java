@@ -15,5 +15,25 @@ public record PropertyClaimInput(
     String incidentDescription,
     long incidentDate,
     String propertyAddress,
-    String propertyType        // SINGLE_FAMILY | CONDO | RENTER
-) {}
+    String propertyType,        // SINGLE_FAMILY | CONDO | RENTER
+    // Opt a claim into AI adjustment at intake (fully-autonomous demo). Defaults to false via
+    // the convenience constructor below; the enableAiAdjuster signal is the primary mechanism.
+    boolean aiAdjusterEnabled
+) {
+
+    // Backward-compatible constructor: portal-filed and CAT-spawned claims open in the default
+    // human-adjuster mode (aiAdjusterEnabled = false) and may be switched later via the signal.
+    public PropertyClaimInput(
+            String claimId,
+            String policyId,
+            String policyHolderId,
+            String catEventId,
+            DamageTier damageTier,
+            String incidentDescription,
+            long incidentDate,
+            String propertyAddress,
+            String propertyType) {
+        this(claimId, policyId, policyHolderId, catEventId, damageTier,
+            incidentDescription, incidentDate, propertyAddress, propertyType, false);
+    }
+}

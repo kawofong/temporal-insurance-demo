@@ -123,7 +123,7 @@ create_nexus_endpoints() {
 # The custom Keyword search attributes the workflows upsert. They must be registered on the
 # namespace or workflows that upsert them hang. The local dev server registers these via the
 # temporal:dev mise task; Cloud namespaces need them created here.
-SEARCH_ATTRIBUTES=(policyHolderId policyStatus policyId claimStatus)
+SEARCH_ATTRIBUTES=(policyHolderId policyStatus policyId claimStatus catEventId)
 
 # Lists existing custom search attributes as JSON, for the existence check. Uses `temporal
 # operator` locally and `temporal cloud` for Temporal Cloud. `|| true` as above.

@@ -48,6 +48,7 @@ class PropertyClaimWorkflowTest {
         env.registerSearchAttribute(ClaimSearchAttributes.POLICY_ID, IndexedValueType.INDEXED_VALUE_TYPE_KEYWORD);
         env.registerSearchAttribute(ClaimSearchAttributes.POLICY_HOLDER_ID, IndexedValueType.INDEXED_VALUE_TYPE_KEYWORD);
         env.registerSearchAttribute(ClaimSearchAttributes.CLAIM_STATUS, IndexedValueType.INDEXED_VALUE_TYPE_KEYWORD);
+        env.registerSearchAttribute(ClaimSearchAttributes.CAT_EVENT_ID, IndexedValueType.INDEXED_VALUE_TYPE_KEYWORD);
     }
 
     // Stands up the notifications domain the claim workflow calls over Nexus: a worker hosting
