@@ -6,6 +6,10 @@ from __future__ import annotations
 import os
 from datetime import timedelta
 
+from temporalio.client import Client
+from temporalio.common import RetryPolicy
+from temporalio.contrib.openai_agents import ModelActivityParameters, OpenAIAgentsPlugin
+
 from agents import (
     AsyncOpenAI,
     Model,
@@ -14,8 +18,6 @@ from agents import (
     set_default_openai_api,
     set_tracing_disabled,
 )
-from temporalio.client import Client
-from temporalio.contrib.openai_agents import ModelActivityParameters, OpenAIAgentsPlugin
 
 # Single task queue shared by every agent workflow hosted on the shared worker.
 TASK_QUEUE = "ai-agents-task-queue"
@@ -44,6 +46,7 @@ class OllamaModelProvider(ModelProvider):
             openai_client=AsyncOpenAI(
                 base_url=OLLAMA_BASE_URL,
                 api_key="ollama",  # required by the client, ignored by Ollama
+                max_retries=0,
             ),
         )
 
@@ -73,7 +76,10 @@ async def connect() -> Client:
                 # A custom model provider requires an explicit timeout; 120s covers the
                 # cold-load time of a local Ollama model on first invocation.
                 model_params=ModelActivityParameters(
-                    start_to_close_timeout=timedelta(seconds=120)
+                    start_to_close_timeout=timedelta(seconds=300),
+                    retry_policy=RetryPolicy(
+                        maximum_attempts=0,
+                    ),
                 ),
             ),
         ],
