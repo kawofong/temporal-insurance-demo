@@ -10,29 +10,32 @@ import org.junit.jupiter.api.Test;
 
 class PropertyClaimServiceQueryTest {
 
-    private static final String BASE_QUERY =
-        "WorkflowType = 'PropertyClaimWorkflow' AND ExecutionStatus != 'Terminated'";
+    private static final String BASE_QUERY = "WorkflowType = 'PropertyClaimWorkflow'";
+    private static final String NOT_TERMINATED = " AND ExecutionStatus != 'Terminated'";
+    private static final String RUNNING = " AND ExecutionStatus = 'Running'";
 
     @Test
     void queryWithoutFiltersScopesByClaimWorkflowType() {
-        assertThat(PropertyClaimService.buildClaimListQuery(null, null, null)).isEqualTo(BASE_QUERY);
+        assertThat(PropertyClaimService.buildClaimListQuery(null, null, null))
+            .isEqualTo(BASE_QUERY + NOT_TERMINATED);
     }
 
     @Test
     void blankFiltersAreTreatedAsNoFilter() {
-        assertThat(PropertyClaimService.buildClaimListQuery("   ", "   ", "   ")).isEqualTo(BASE_QUERY);
+        assertThat(PropertyClaimService.buildClaimListQuery("   ", "   ", "   "))
+            .isEqualTo(BASE_QUERY + NOT_TERMINATED);
     }
 
     @Test
     void queryWithHolderFiltersByPolicyHolderIdSearchAttribute() {
         assertThat(PropertyClaimService.buildClaimListQuery("PH-001", null, null))
-            .isEqualTo(BASE_QUERY + " AND policyHolderId = 'PH-001'");
+            .isEqualTo(BASE_QUERY + " AND policyHolderId = 'PH-001'" + NOT_TERMINATED);
     }
 
     @Test
     void queryWithPolicyIdFiltersByPolicyIdSearchAttribute() {
         assertThat(PropertyClaimService.buildClaimListQuery(null, "demo-property-001", null))
-            .isEqualTo(BASE_QUERY + " AND policyId = 'demo-property-001'");
+            .isEqualTo(BASE_QUERY + " AND policyId = 'demo-property-001'" + NOT_TERMINATED);
     }
 
     @Test
@@ -40,22 +43,38 @@ class PropertyClaimServiceQueryTest {
         assertThat(PropertyClaimService.buildClaimListQuery("PH-001", "demo-property-001", null))
             .isEqualTo(BASE_QUERY
                 + " AND policyHolderId = 'PH-001'"
-                + " AND policyId = 'demo-property-001'");
+                + " AND policyId = 'demo-property-001'"
+                + NOT_TERMINATED);
     }
 
     @Test
-    void queryWithStatusFiltersByClaimStatusSearchAttribute() {
+    void queryWithNonTerminalStatusRequiresARunningExecution() {
         assertThat(PropertyClaimService.buildClaimListQuery(null, null, "PENDING_DAMAGE_ASSESSMENT"))
-            .isEqualTo(BASE_QUERY + " AND claimStatus = 'PENDING_DAMAGE_ASSESSMENT'");
+            .isEqualTo(BASE_QUERY + " AND claimStatus = 'PENDING_DAMAGE_ASSESSMENT'" + RUNNING);
     }
 
     @Test
-    void queryWithStatusComposesWithPolicyFilters() {
+    void queryWithNonTerminalStatusComposesWithPolicyFilters() {
         assertThat(PropertyClaimService.buildClaimListQuery("PH-001", "demo-property-001", "PENDING_APPROVAL"))
             .isEqualTo(BASE_QUERY
                 + " AND policyHolderId = 'PH-001'"
                 + " AND policyId = 'demo-property-001'"
-                + " AND claimStatus = 'PENDING_APPROVAL'");
+                + " AND claimStatus = 'PENDING_APPROVAL'"
+                + RUNNING);
+    }
+
+    // Terminal statuses only ever land on a workflow as its very last act before completing, so
+    // a Running execution is never required to trust them — unlike the non-terminal statuses.
+    @Test
+    void queryWithClosedStatusDoesNotRequireARunningExecution() {
+        assertThat(PropertyClaimService.buildClaimListQuery(null, null, "CLOSED"))
+            .isEqualTo(BASE_QUERY + " AND claimStatus = 'CLOSED'" + NOT_TERMINATED);
+    }
+
+    @Test
+    void queryWithRejectedStatusDoesNotRequireARunningExecution() {
+        assertThat(PropertyClaimService.buildClaimListQuery(null, null, "REJECTED"))
+            .isEqualTo(BASE_QUERY + " AND claimStatus = 'REJECTED'" + NOT_TERMINATED);
     }
 
     @Test

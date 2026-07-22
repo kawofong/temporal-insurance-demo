@@ -213,22 +213,29 @@ public class PropertyClaimService {
 
     // Pure, unit-testable (the test server does not implement ListWorkflowExecutions).
     static String buildClaimListQuery(String policyHolderId, String policyId, String status) {
-        // Exclude terminated workflows: termination can interrupt a workflow task, leaving a
-        // history that cannot be safely replayed to answer the per-claim getClaim query.
-        String query = "WorkflowType = '" + PropertyClaimWorkflow.class.getSimpleName() + "'"
-            + " AND ExecutionStatus != 'Terminated'";
+        String query = "WorkflowType = '" + PropertyClaimWorkflow.class.getSimpleName() + "'";
         if (hasText(policyHolderId)) {
             query += " AND " + ClaimSearchAttributes.POLICY_HOLDER_ID + " = '" + policyHolderId + "'";
         }
         if (hasText(policyId)) {
             query += " AND " + ClaimSearchAttributes.POLICY_ID + " = '" + policyId + "'";
         }
+        boolean nonTerminalStatus = false;
         if (hasText(status)) {
             if (!isValidClaimStatus(status)) {
                 throw new IllegalArgumentException("Unknown claim status: " + status);
             }
             query += " AND " + ClaimSearchAttributes.CLAIM_STATUS + " = '" + status + "'";
+            nonTerminalStatus = !ClaimStatus.valueOf(status).isTerminal();
         }
+        // A claim's search attributes are a snapshot the workflow itself upserts; a workflow that
+        // died (terminated, timed out, or was canceled) while parked at a non-terminal status
+        // leaves that status behind forever, even though no signal can ever reach it again.
+        // Requiring a Running execution for a non-terminal status keeps queues like the adjuster
+        // queues from showing claims no one can actually act on. Terminal statuses — and the
+        // unfiltered list — instead just exclude Terminated, since a Terminated execution's
+        // history cannot always be safely replayed to answer the per-claim getClaim query.
+        query += nonTerminalStatus ? " AND ExecutionStatus = 'Running'" : " AND ExecutionStatus != 'Terminated'";
         return query;
     }
 

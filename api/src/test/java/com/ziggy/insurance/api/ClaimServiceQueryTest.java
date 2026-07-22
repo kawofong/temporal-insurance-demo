@@ -1,7 +1,7 @@
 // Unit tests for the claim-list visibility query builder.
 // The time-skipping test server does not implement ListWorkflowExecutions, so the full
 // list/search path is verified end-to-end against a real Temporal dev server; here we
-// cover the query construction that scopes results by policyholder and/or policy.
+// cover the query construction that scopes results by policyholder, policy, and/or status.
 package com.ziggy.insurance.api;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -11,27 +11,31 @@ import org.junit.jupiter.api.Test;
 class ClaimServiceQueryTest {
 
     private static final String BASE_QUERY = "WorkflowType = 'AutoClaimWorkflow'";
+    private static final String NOT_TERMINATED = " AND ExecutionStatus != 'Terminated'";
+    private static final String RUNNING = " AND ExecutionStatus = 'Running'";
 
     @Test
     void queryWithoutFiltersScopesByClaimWorkflowType() {
-        assertThat(ClaimService.buildClaimListQuery(null, null, null)).isEqualTo(BASE_QUERY);
+        assertThat(ClaimService.buildClaimListQuery(null, null, null))
+            .isEqualTo(BASE_QUERY + NOT_TERMINATED);
     }
 
     @Test
     void blankFiltersAreTreatedAsNoFilter() {
-        assertThat(ClaimService.buildClaimListQuery("   ", "   ", "   ")).isEqualTo(BASE_QUERY);
+        assertThat(ClaimService.buildClaimListQuery("   ", "   ", "   "))
+            .isEqualTo(BASE_QUERY + NOT_TERMINATED);
     }
 
     @Test
     void queryWithHolderFiltersByPolicyHolderIdSearchAttribute() {
         assertThat(ClaimService.buildClaimListQuery("PH-001", null, null))
-            .isEqualTo(BASE_QUERY + " AND policyHolderId = 'PH-001'");
+            .isEqualTo(BASE_QUERY + " AND policyHolderId = 'PH-001'" + NOT_TERMINATED);
     }
 
     @Test
     void queryWithPolicyIdFiltersByPolicyIdSearchAttribute() {
         assertThat(ClaimService.buildClaimListQuery(null, "demo-auto-001", null))
-            .isEqualTo(BASE_QUERY + " AND policyId = 'demo-auto-001'");
+            .isEqualTo(BASE_QUERY + " AND policyId = 'demo-auto-001'" + NOT_TERMINATED);
     }
 
     @Test
@@ -39,22 +43,38 @@ class ClaimServiceQueryTest {
         assertThat(ClaimService.buildClaimListQuery("PH-001", "demo-auto-001", null))
             .isEqualTo(BASE_QUERY
                 + " AND policyHolderId = 'PH-001'"
-                + " AND policyId = 'demo-auto-001'");
+                + " AND policyId = 'demo-auto-001'"
+                + NOT_TERMINATED);
     }
 
     @Test
-    void queryWithStatusFiltersByClaimStatusSearchAttribute() {
+    void queryWithNonTerminalStatusRequiresARunningExecution() {
         assertThat(ClaimService.buildClaimListQuery(null, null, "PENDING_DAMAGE_ASSESSMENT"))
-            .isEqualTo(BASE_QUERY + " AND claimStatus = 'PENDING_DAMAGE_ASSESSMENT'");
+            .isEqualTo(BASE_QUERY + " AND claimStatus = 'PENDING_DAMAGE_ASSESSMENT'" + RUNNING);
     }
 
     @Test
-    void queryWithStatusComposesWithPolicyFilters() {
+    void queryWithNonTerminalStatusComposesWithPolicyFilters() {
         assertThat(ClaimService.buildClaimListQuery("PH-001", "demo-auto-001", "PENDING_APPROVAL"))
             .isEqualTo(BASE_QUERY
                 + " AND policyHolderId = 'PH-001'"
                 + " AND policyId = 'demo-auto-001'"
-                + " AND claimStatus = 'PENDING_APPROVAL'");
+                + " AND claimStatus = 'PENDING_APPROVAL'"
+                + RUNNING);
+    }
+
+    // Terminal statuses only ever land on a workflow as its very last act before completing, so
+    // a Running execution is never required to trust them — unlike the non-terminal statuses.
+    @Test
+    void queryWithClosedStatusDoesNotRequireARunningExecution() {
+        assertThat(ClaimService.buildClaimListQuery(null, null, "CLOSED"))
+            .isEqualTo(BASE_QUERY + " AND claimStatus = 'CLOSED'" + NOT_TERMINATED);
+    }
+
+    @Test
+    void queryWithRejectedStatusDoesNotRequireARunningExecution() {
+        assertThat(ClaimService.buildClaimListQuery(null, null, "REJECTED"))
+            .isEqualTo(BASE_QUERY + " AND claimStatus = 'REJECTED'" + NOT_TERMINATED);
     }
 
     @Test
