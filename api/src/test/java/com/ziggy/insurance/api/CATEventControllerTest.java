@@ -7,7 +7,9 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.ziggy.insurance.domains.cat.CATEventActivitiesImpl;
 import com.ziggy.insurance.domains.cat.CATEventLifecycle;
+import com.ziggy.insurance.domains.cat.CATEventLimits;
 import com.ziggy.insurance.domains.cat.CATEventStatus;
 import com.ziggy.insurance.domains.cat.CATEventWorkflowImpl;
 import com.ziggy.insurance.domains.claim.models.CoverageVerificationResult;
@@ -86,9 +88,12 @@ class CATEventControllerTest {
             testEnv.registerSearchAttribute(ClaimSearchAttributes.POLICY_ID, IndexedValueType.INDEXED_VALUE_TYPE_KEYWORD);
             testEnv.registerSearchAttribute(ClaimSearchAttributes.POLICY_HOLDER_ID, IndexedValueType.INDEXED_VALUE_TYPE_KEYWORD);
             testEnv.registerSearchAttribute(ClaimSearchAttributes.CLAIM_STATUS, IndexedValueType.INDEXED_VALUE_TYPE_KEYWORD);
+            Worker catWorker = testEnv.newWorker(TaskQueues.CAT_TASK_QUEUE);
+            catWorker.registerWorkflowImplementationTypes(CATEventWorkflowImpl.class);
+            catWorker.registerActivitiesImplementations(
+                new CATEventActivitiesImpl(testEnv.getWorkflowClient()));
             Worker worker = testEnv.newWorker(TaskQueues.CLAIM_TASK_QUEUE);
-            worker.registerWorkflowImplementationTypes(
-                CATEventWorkflowImpl.class, PropertyClaimWorkflowImpl.class);
+            worker.registerWorkflowImplementationTypes(PropertyClaimWorkflowImpl.class);
             worker.registerActivitiesImplementations(new FastPropertyClaimActivities());
 
             // Each child claim notifies the policyholder over Nexus; stand up the
@@ -181,6 +186,25 @@ class CATEventControllerTest {
             .andExpect(jsonPath("$.totalClaimsOpened").value(4))
             .andExpect(jsonPath("$.percentComplete").value(100.0))
             .andExpect(jsonPath("$.status").value("COMPLETED"));
+    }
+
+    @Test
+    @Order(4)
+    void declareWithExcessiveTotalReturns400() throws Exception {
+        String body = """
+            {
+                "catEventId": "EVT-TOO-BIG",
+                "eventName": "Too Big Event",
+                "affectedRegion": "Nowhere",
+                "totalClaimsToGenerate": %d
+            }
+            """.formatted(CATEventLimits.MAX_CLAIMS_PER_EVENT + 1);
+
+        mockMvc.perform(post(BASE_URL)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(body))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.error").value("VALIDATION_FAILED"));
     }
 
     // Polls until the event reaches its terminal COMPLETED state — i.e. every claim has been

@@ -1,44 +1,47 @@
 // CAT event workflow implementation.
-// Declares a catastrophe, generates synthetic property-claim inputs, and fans them out as
-// ABANDON child PropertyClaimWorkflow executions using the Batch Iterator pattern: one batch
-// of BATCH_SIZE per run, then continue-as-new. This bounds each run's history so the event
-// can scale to hundreds of thousands of claims without exceeding per-run history limits.
+// Declares a catastrophe and fans out its synthetic property claims by firing up to
+// maxConcurrentActivities Activities concurrently within a single run, each Activity starting
+// its own slice of PropertyClaimWorkflow executions directly via WorkflowClient. Bounded by
+// CATEventLimits.MAX_CLAIMS_PER_EVENT, the whole fan-out fits in one run's history — no
+// continue-as-new needed.
 package com.ziggy.insurance.domains.cat;
 
-import com.ziggy.insurance.domains.claim.models.DamageTier;
-import com.ziggy.insurance.domains.claim.property.PropertyClaimInput;
-import com.ziggy.insurance.domains.claim.property.PropertyClaimWorkflow;
-import com.ziggy.insurance.domains.policy.TaskQueues;
-import io.temporal.api.common.v1.WorkflowExecution;
-import io.temporal.api.enums.v1.ParentClosePolicy;
-import io.temporal.common.Priority;
-import io.temporal.failure.ChildWorkflowFailure;
+import io.temporal.activity.ActivityOptions;
+import io.temporal.common.RetryOptions;
+import io.temporal.failure.ActivityFailure;
+import io.temporal.failure.ApplicationFailure;
 import io.temporal.spring.boot.WorkflowImpl;
 import io.temporal.workflow.Async;
-import io.temporal.workflow.ChildWorkflowOptions;
 import io.temporal.workflow.Promise;
 import io.temporal.workflow.Workflow;
 import io.temporal.workflow.WorkflowInit;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import org.slf4j.Logger;
 
-@WorkflowImpl(taskQueues = "claim-task-queue")
+@WorkflowImpl(taskQueues = "cat-task-queue")
 public class CATEventWorkflowImpl implements CATEventWorkflow {
 
-    private static final int DEFAULT_BATCH_SIZE = 1000;
+    private static final int DEFAULT_MAX_CONCURRENT_ACTIVITIES = 1000;
 
-    // Child property claims run at Temporal's default priority key (3, the middle of the [1, 5]
-    // range) so they sit below the priority-1 CAT event parent on the shared claim task queue.
-    // Set explicitly rather than relying on the default so the intent is visible.
-    private static final int CHILD_CLAIM_PRIORITY_KEY = 3;
-
-    // Number of child claims fanned out per run before continue-as-new. Owned by the workflow
-    // (deliberately not a workflow input); package-private and non-final only so tests can shrink
-    // it to exercise the continue-as-new hop without fanning out hundreds of children.
-    static int batchSize = DEFAULT_BATCH_SIZE;
+    // Upper bound on concurrent claim-filing shards. Owned by the workflow (deliberately not a
+    // workflow input); package-private and non-final only so tests can shrink it to exercise
+    // multi-shard fan-out without spawning hundreds of real workflows.
+    static int maxConcurrentActivities = DEFAULT_MAX_CONCURRENT_ACTIVITIES;
 
     private static final Logger logger = Workflow.getLogger(CATEventWorkflowImpl.class);
+
+    // Set max interval to 2 secs for fast retries.
+    private final CATEventActivities activities = Workflow.newActivityStub(
+        CATEventActivities.class,
+        ActivityOptions.newBuilder()
+            .setStartToCloseTimeout(Duration.ofMinutes(2))
+            .setRetryOptions(RetryOptions.newBuilder()
+                .setMaximumInterval(Duration.ofSeconds(2))
+                .setInitialInterval(Duration.ofSeconds(1))
+                .build())
+            .build());
 
     private CATEventState state;
 
@@ -49,64 +52,46 @@ public class CATEventWorkflowImpl implements CATEventWorkflow {
 
     @Override
     public void run(CATEventInput input) {
-        if (input.nextClaimIndex() == 0) {
-            state.setDeclaredAt(Workflow.currentTimeMillis());
+        if (input.totalClaimsToGenerate() > CATEventLimits.MAX_CLAIMS_PER_EVENT) {
+            throw ApplicationFailure.newNonRetryableFailure(
+                "totalClaimsToGenerate " + input.totalClaimsToGenerate()
+                    + " exceeds the per-event cap of " + CATEventLimits.MAX_CLAIMS_PER_EVENT,
+                "CATEventLimitExceeded");
         }
 
-        if (input.nextClaimIndex() < input.totalClaimsToGenerate()) {
-            state.setStatus(CATEventLifecycle.SPAWNING);
+        state.setDeclaredAt(Workflow.currentTimeMillis());
+        state.setStatus(CATEventLifecycle.SPAWNING);
 
-            int start = input.nextClaimIndex();
-            int end = Math.min(start + batchSize, input.totalClaimsToGenerate());
+        int total = input.totalClaimsToGenerate();
+        int shardCount = Math.min(maxConcurrentActivities, total);
+        int shardSize = Math.ceilDiv(total, shardCount);
 
-            // Fire every child in the batch without blocking, collecting a start promise
-            // for each. We then block only until every child has durably STARTED — never
-            // until it completes. ABANDON means each claim runs to completion on its own,
-            // so the parent can continue-as-new the moment the batch is safely started.
-            List<Promise<WorkflowExecution>> childStarts = new ArrayList<>();
-            for (int i = start; i < end; i++) {
-                PropertyClaimInput claimInput = generateSyntheticClaim(input, i);
-                PropertyClaimWorkflow child = Workflow.newChildWorkflowStub(
-                    PropertyClaimWorkflow.class,
-                    ChildWorkflowOptions.newBuilder()
-                        .setWorkflowId("claim/property/" + input.catEventId() + "-" + i)
-                        .setTaskQueue(TaskQueues.CLAIM_TASK_QUEUE)
-                        .setParentClosePolicy(ParentClosePolicy.PARENT_CLOSE_POLICY_ABANDON)
-                        .setPriority(Priority.newBuilder()
-                            .setPriorityKey(CHILD_CLAIM_PRIORITY_KEY)
-                            .build())
-                        // Each claim index yields a unique workflow id; the default start
-                        // behavior already fails on a running-duplicate id, so a re-declared
-                        // batch never silently double-files a claim. (WorkflowIdConflictPolicy
-                        // is a client-WorkflowOptions concept, not exposed on child options.)
-                        .build());
-                Async.function(child::run, claimInput);
-                childStarts.add(Workflow.getWorkflowExecution(child));
-            }
-            // Resolves as soon as the child has started; does not wait for it to finish.
-            // A start that fails (e.g. a running-duplicate workflow id) is logged and skipped
-            // so one bad claim never derails the rest of the batch.
-            for (Promise<WorkflowExecution> started : childStarts) {
-                try {
-                    started.get();
-                } catch (ChildWorkflowFailure e) {
-                    logger.warn("Child claim failed to start, continuing: {}", e.getMessage());
-                }
-            }
+        List<Promise<Integer>> shardCompletions = new ArrayList<>();
+        for (int s = 0; s < shardCount; s++) {
+            int start = s * shardSize;
+            int end = Math.min(start + shardSize, total);
+            CATEventShardInput shardInput =
+                new CATEventShardInput(input.catEventId(), input.affectedRegion(), start, end);
 
-            state.setTotalClaimsOpened(input.totalClaimsOpened() + (end - start));
-
-            // Batch-iterator checkpoint: hand the next offset + carried counter to a
-            // fresh run. This bounds each run's history to ~batchSize child-start events.
-            CATEventInput next = new CATEventInput(
-                input.catEventId(), input.eventName(), input.affectedRegion(),
-                input.totalClaimsToGenerate(), end, state.getTotalClaimsOpened(),
-                state.getDeclaredAt());
-            Workflow.continueAsNew(next);
+            Promise<Integer> shardResult = Async.function(activities::fileClaimShard, shardInput);
+            // Progress climbs incrementally as each shard finishes, not in one jump at the end.
+            shardCompletions.add(shardResult.thenApply(count -> {
+                state.setTotalClaimsOpened(state.getTotalClaimsOpened() + count);
+                return count;
+            }));
         }
 
-        // Reached only on the terminating run (all claims filed): the event completes.
-        // The ABANDON child claims keep running independently.
+        // A shard that ultimately fails (after Temporal's default activity retries are
+        // exhausted) is logged and skipped so one bad shard never derails the rest of the CAT
+        // event — mirroring the old per-claim resilience intent, now at shard granularity.
+        for (Promise<Integer> shardCompletion : shardCompletions) {
+            try {
+                shardCompletion.get();
+            } catch (ActivityFailure e) {
+                logger.warn("Claim shard failed to file its claims, continuing: {}", e.getMessage());
+            }
+        }
+
         state.setStatus(CATEventLifecycle.COMPLETED);
     }
 
@@ -119,29 +104,5 @@ public class CATEventWorkflowImpl implements CATEventWorkflow {
             state.getCatEventId(), state.getEventName(), state.getAffectedRegion(),
             state.getStatus(), state.getTotalClaimsExpected(), state.getTotalClaimsOpened(),
             pct, state.getDeclaredAt());
-    }
-
-    // Deterministic synthetic claim generation — replay-safe RNG only.
-    private PropertyClaimInput generateSyntheticClaim(CATEventInput input, int claimIndex) {
-        DamageTier tier = randomDamageTier();
-        String claimId = input.catEventId() + "-" + claimIndex;
-        return new PropertyClaimInput(
-            claimId,
-            "policy/property/syn-" + claimIndex,
-            "holder-" + Workflow.randomUUID(),
-            input.catEventId(),
-            tier,
-            "CAT event damage — " + tier,
-            Workflow.currentTimeMillis(),
-            "Synthetic address in " + input.affectedRegion(),
-            "SINGLE_FAMILY");
-    }
-
-    // 10% TOTAL_LOSS, 40% MAJOR_DAMAGE, 50% MINOR_DAMAGE — deterministic RNG.
-    private DamageTier randomDamageTier() {
-        int roll = Workflow.newRandom().nextInt(100);
-        if (roll < 10) return DamageTier.TOTAL_LOSS;
-        if (roll < 50) return DamageTier.MAJOR_DAMAGE;
-        return DamageTier.MINOR_DAMAGE;
     }
 }

@@ -6,6 +6,10 @@ import { readApiError } from "./policyHelpers";
 export const CAT_ENDPOINT = "/api/v1/cat";
 // How often the CAT panel re-queries the workflow so progress appears live.
 export const CAT_POLL_INTERVAL_MS = 3000;
+// Must be kept in sync with CATEventLimits.MAX_CLAIMS_PER_EVENT in the Java domain module
+// (domain/src/main/java/com/ziggy/insurance/domains/cat/CATEventLimits.java) — there is no
+// shared-constants mechanism between the Java backend and this JS frontend.
+export const MAX_CLAIMS_PER_EVENT = 100_000;
 
 export { readApiError };
 

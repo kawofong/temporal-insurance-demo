@@ -4,6 +4,7 @@ package com.ziggy.insurance.api;
 
 import com.ziggy.insurance.domains.cat.CATEventInput;
 import com.ziggy.insurance.domains.cat.CATEventLifecycle;
+import com.ziggy.insurance.domains.cat.CATEventLimits;
 import com.ziggy.insurance.domains.cat.CATEventStatus;
 import com.ziggy.insurance.domains.cat.CATEventWorkflow;
 import com.ziggy.insurance.domains.policy.TaskQueues;
@@ -15,11 +16,12 @@ import org.springframework.stereotype.Service;
 @Service
 public class CATEventService {
 
-    private static final String TASK_QUEUE = TaskQueues.CLAIM_TASK_QUEUE;
+    // CAT events run on their own task queue so the mass claim fan-out is isolated from
+    // routine claim processing on CLAIM_TASK_QUEUE.
+    private static final String TASK_QUEUE = TaskQueues.CAT_TASK_QUEUE;
 
-    // CAT events are the most urgent work on the claim task queue; priority key 1
-    // is the highest of Temporal's [1, 5] range, so their tasks are scheduled ahead
-    // of routine claim processing.
+    // Priority key 1 is the highest of Temporal's [1, 5] range; retained so any future work
+    // sharing the CAT task queue is scheduled behind the CAT event itself.
     private static final int CAT_EVENT_PRIORITY_KEY = 1;
 
     private final WorkflowClient workflowClient;
@@ -36,11 +38,13 @@ public class CATEventService {
         if (req.totalClaimsToGenerate() <= 0) {
             throw new IllegalArgumentException("totalClaimsToGenerate must be positive");
         }
-        // Batch-iterator cursor and carried facts start at zero; the workflow owns
-        // BATCH_SIZE and stamps declaredAt on its first run.
+        if (req.totalClaimsToGenerate() > CATEventLimits.MAX_CLAIMS_PER_EVENT) {
+            throw new IllegalArgumentException(
+                "totalClaimsToGenerate must not exceed " + CATEventLimits.MAX_CLAIMS_PER_EVENT);
+        }
         CATEventInput input = new CATEventInput(
             req.catEventId(), req.eventName(), req.affectedRegion(),
-            req.totalClaimsToGenerate(), 0, 0, 0);
+            req.totalClaimsToGenerate());
 
         CATEventWorkflow wf = workflowClient.newWorkflowStub(
             CATEventWorkflow.class,

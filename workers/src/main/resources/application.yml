@@ -25,6 +25,13 @@ spring:
           max-concurrent-local-activity-executors: 2000
           max-concurrent-workflow-task-pollers: 100
           max-concurrent-activity-task-pollers: 100
+      - task-queue: cat-task-queue
+        capacity:
+          max-concurrent-workflow-task-executors: 100
+          max-concurrent-activity-executors: 2000
+          max-concurrent-local-activity-executors: 2000
+          max-concurrent-workflow-task-pollers: 20
+          max-concurrent-activity-task-pollers: 100
       - task-queue: notifications-task-queue
         capacity:
           max-concurrent-workflow-task-executors: 2000

@@ -13,6 +13,7 @@ import {
 } from "./claimHelpers";
 import {
   CAT_POLL_INTERVAL_MS,
+  MAX_CLAIMS_PER_EVENT,
   catProgressPercent,
   declareCatEvent,
   fetchCatEventStatus,
@@ -532,6 +533,10 @@ function CATEventPanel() {
       setFormError("Total claims to generate must be a whole number of at least 1.");
       return;
     }
+    if (total > MAX_CLAIMS_PER_EVENT) {
+      setFormError(`Total claims to generate must not exceed ${MAX_CLAIMS_PER_EVENT.toLocaleString()}.`);
+      return;
+    }
 
     // The id is generated at submit time from the (trimmed) name and today's date.
     const catEventId = generateCatEventId(trimmedName, new Date());
@@ -666,6 +671,7 @@ function CATEventPanel() {
           <input
             type="number"
             min="1"
+            max={MAX_CLAIMS_PER_EVENT}
             value={totalClaimsToGenerate}
             onChange={(event) => setTotalClaimsToGenerate(event.target.value)}
             required

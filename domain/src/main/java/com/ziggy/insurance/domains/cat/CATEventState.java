@@ -1,6 +1,6 @@
 // Mutable workflow state for a CAT event entity.
-// The batch-iterator cursor lives in CATEventInput; this state holds the durable,
-// query-visible facts (lifecycle status, expected/opened counts, declaration time).
+// Holds the durable, query-visible facts (lifecycle status, expected/opened counts,
+// declaration time).
 package com.ziggy.insurance.domains.cat;
 
 public class CATEventState {
@@ -22,8 +22,8 @@ public class CATEventState {
         s.affectedRegion = input.affectedRegion();
         s.status = CATEventLifecycle.DECLARED;
         s.totalClaimsExpected = input.totalClaimsToGenerate();
-        s.totalClaimsOpened = input.totalClaimsOpened();
-        s.declaredAt = input.declaredAt();
+        s.totalClaimsOpened = 0;
+        s.declaredAt = 0;
         return s;
     }
 
