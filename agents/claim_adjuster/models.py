@@ -1,19 +1,14 @@
-# Data model for the claim-adjuster agent, ported from the Java property-policy domain.
-# Pydantic models mirror the Java records/enums so the agent adjudicates the same shapes.
+# Data model for the claim-adjuster agent.
+# The claim adjuster makes the binding approve/deny decision from the claim, its verified
+# coverage, and the field adjuster's damage assessment — everything the Java claim workflow
+# already holds. It does NOT take policy state (coverage was verified upstream), so no policy
+# models live here. Field names are snake_case; they are the cross-language wire contract with
+# the Java mirror records in domain/.../claim/property/agents/ (see the spec, §6.3/§6.4).
 from __future__ import annotations
 
 from enum import Enum
 
 from pydantic import BaseModel
-
-
-class PolicyStatus(str, Enum):
-    """Lifecycle states of a property policy, mirrored from the Java PolicyStatus enum."""
-
-    ACTIVE = "ACTIVE"
-    SUSPENDED = "SUSPENDED"
-    RENEWAL_PENDING = "RENEWAL_PENDING"
-    CANCELLED = "CANCELLED"
 
 
 class DamageTier(str, Enum):
@@ -22,34 +17,6 @@ class DamageTier(str, Enum):
     TOTAL_LOSS = "TOTAL_LOSS"
     MAJOR_DAMAGE = "MAJOR_DAMAGE"
     MINOR_DAMAGE = "MINOR_DAMAGE"
-
-
-class InsuredProperty(BaseModel):
-    """The property insured under a policy. property_type: SINGLE_FAMILY | CONDO | RENTER."""
-
-    property_id: str
-    address: str
-    property_type: str
-
-
-class LossPayee(BaseModel):
-    """A loss payee (typically a lender) on a property policy."""
-
-    loss_payee_id: str
-    name: str
-    loan_number: str
-
-
-class PropertyPolicyState(BaseModel):
-    """The policy on file that a claim is adjudicated against. Dates are epoch millis."""
-
-    policy_id: str
-    policy_holder_id: str
-    status: PolicyStatus
-    effective_date: int
-    expiry_date: int
-    property: InsuredProperty
-    loss_payees: list[LossPayee] = []
 
 
 class PropertyClaimInput(BaseModel):
@@ -67,7 +34,7 @@ class PropertyClaimInput(BaseModel):
 
 
 class CoverageVerificationResult(BaseModel):
-    """The adjuster's coverage determination. rejection_reason is null when covered."""
+    """The already-verified coverage. rejection_reason is null when covered."""
 
     covered: bool
     coverage_type: str  # e.g. HO3 | HO6 | RENTERS
@@ -75,15 +42,32 @@ class CoverageVerificationResult(BaseModel):
     rejection_reason: str | None = None
 
 
+class DamageAssessmentResult(BaseModel):
+    """The field adjuster's damage assessment. estimated_cost is whole dollars."""
+
+    summary: str
+    estimated_cost: int
+
+
 class ClaimAdjudicationRequest(BaseModel):
-    """Workflow input: the claim plus the policy it is adjudicated against."""
+    """Workflow input: the claim, its verified coverage, and the damage assessment."""
 
     claim: PropertyClaimInput
-    policy: PropertyPolicyState
+    coverage: CoverageVerificationResult
+    assessment: DamageAssessmentResult
 
 
 class ClaimAdjudicationReport(BaseModel):
-    """The agent's structured output: the coverage determination plus its rationale."""
+    """The agent's binding approve/deny decision.
 
-    coverage: CoverageVerificationResult
+    On approval, approved_payout_amount is the repair cost minus the deductible, clamped at
+    zero, and rejection_reason is null. On denial, approved_payout_amount is 0 and
+    rejection_reason explains why.
+    """
+
+    approved: bool
+    approved_payout_amount: int  # estimated_cost - deductible, >= 0; 0 when denied
+    adjuster_id: str = "adj-ai-agent"
+    notes: str  # justification when approved
+    rejection_reason: str | None = None  # populated when approved is False
     rationale: str

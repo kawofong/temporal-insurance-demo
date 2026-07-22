@@ -126,8 +126,75 @@
             }
         },
         {
+            "label": "ollama",
+            "type": "shell",
+            "command": "source ~/.zshrc 2>/dev/null || true; echo 'Restarting Ollama to apply env...'; pkill -f 'ollama serve' 2>/dev/null || true; while curl -sf --connect-timeout 1 http://localhost:11434/api/version >/dev/null 2>&1; do echo 'Waiting for existing Ollama to stop...'; sleep 1; done; exec ollama serve",
+            "options": {
+                "cwd": "${workspaceFolder}",
+                "env": {
+                    "OLLAMA_NUM_PARALLEL": "8",
+                    "OLLAMA_MAX_QUEUE": "1024"
+                }
+            },
+            "isBackground": true,
+            "problemMatcher": [
+                {
+                    "pattern": [
+                        {
+                            "regexp": "^(NOMATCH)(.*)$",
+                            "file": 1,
+                            "message": 2,
+                            "kind": "file"
+                        }
+                    ],
+                    "background": {
+                        "activeOnStart": true,
+                        "beginsPattern": "Restarting Ollama",
+                        "endsPattern": "Listening on"
+                    }
+                }
+            ],
+            "presentation": {
+                "group": "agents",
+                "reveal": "always",
+                "panel": "new"
+            }
+        },
+        {
+            "label": "agent-worker",
+            "type": "shell",
+            "command": "echo 'Starting agents worker...'; source ~/.zshrc || mise run agents:worker",
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "isBackground": true,
+            "dependsOn": ["temporal-server", "ollama"],
+            "problemMatcher": [
+                {
+                    "pattern": [
+                        {
+                            "regexp": "^(NOMATCH)(.*)$",
+                            "file": 1,
+                            "message": 2,
+                            "kind": "file"
+                        }
+                    ],
+                    "background": {
+                        "activeOnStart": true,
+                        "beginsPattern": "Starting agents worker",
+                        "endsPattern": "Agents worker started"
+                    }
+                }
+            ],
+            "presentation": {
+                "group": "agents",
+                "reveal": "always",
+                "panel": "new"
+            }
+        },
+        {
             "label": "Start Local",
-            "dependsOn": ["temporal-server", "api", "ui", "worker", "demo-setup"],
+            "dependsOn": ["temporal-server", "api", "ui", "worker", "ollama", "agent-worker", "demo-setup"],
             "problemMatcher": [],
             "group": {
                 "kind": "build",
@@ -220,8 +287,43 @@
             }
         },
         {
+            "label": "agent-worker (cloud)",
+            "type": "shell",
+            "command": "echo 'Starting agents worker...'; source ~/.zshrc || mise run agents:worker",
+            "options": {
+                "cwd": "${workspaceFolder}",
+                "env": {
+                    "MISE_ENV": "cloud"
+                }
+            },
+            "isBackground": true,
+            "dependsOn": ["ollama"],
+            "problemMatcher": [
+                {
+                    "pattern": [
+                        {
+                            "regexp": "^(NOMATCH)(.*)$",
+                            "file": 1,
+                            "message": 2,
+                            "kind": "file"
+                        }
+                    ],
+                    "background": {
+                        "activeOnStart": true,
+                        "beginsPattern": "Starting agents worker",
+                        "endsPattern": "Agents worker started"
+                    }
+                }
+            ],
+            "presentation": {
+                "group": "cloud",
+                "reveal": "always",
+                "panel": "new"
+            }
+        },
+        {
             "label": "Start Cloud",
-            "dependsOn": ["api (cloud)", "ui", "worker (cloud)", "demo-setup (cloud)"],
+            "dependsOn": ["api (cloud)", "ui", "worker (cloud)", "ollama", "agent-worker (cloud)", "demo-setup (cloud)"],
             "problemMatcher": [],
             "group": "build"
         }

@@ -8,5 +8,8 @@ public record PropertyFnolRequest(
     String incidentDescription,
     long incidentDate,
     String propertyAddress,
-    String propertyType        // SINGLE_FAMILY | CONDO | RENTER
+    String propertyType,        // SINGLE_FAMILY | CONDO | RENTER
+    // Optional: open the claim already in AI-adjuster mode (fully-autonomous demo). Absent in
+    // JSON → false (Jackson defaults the missing primitive), i.e. the default human path.
+    boolean aiAdjusterEnabled
 ) {}

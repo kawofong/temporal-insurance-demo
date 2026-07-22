@@ -16,7 +16,7 @@ public interface CommercialPolicyWorkflow {
     @WorkflowMethod
     void run(CommercialPolicyInput input);
 
-    // Updates — additional insured management
+    // Updates — caller gets return value or rejection
 
     @UpdateMethod
     int addAdditionalInsured(AdditionalInsured additionalInsured);
@@ -30,7 +30,7 @@ public interface CommercialPolicyWorkflow {
     @UpdateValidatorMethod(updateName = "removeAdditionalInsured")
     void validateRemoveAdditionalInsured(String additionalInsuredId);
 
-    // Signals — lifecycle transitions
+    // Signals — fire-and-forget
 
     @SignalMethod
     void activatePolicy();
@@ -50,7 +50,7 @@ public interface CommercialPolicyWorkflow {
     @SignalMethod
     void completeRenewal();
 
-    // Query
+    // Query — read-only state retrieval
 
     @QueryMethod
     CommercialPolicyState getPolicy();

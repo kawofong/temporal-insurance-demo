@@ -1,0 +1,73 @@
+#!/usr/bin/env bash
+# End-to-end demo driver for the property-claim AI-adjuster "drain" scenario (spec §6.5): one
+# Temporal batch signal flips every *running* property claim to AI adjustment, so claims parked
+# on a human adjuster are handed to the field- and claim-adjuster agents and drain to CLOSED.
+#
+# This fires a single enableAiAdjuster batch operation over a Visibility query
+# (ExecutionStatus='Running') rather than a client-side list-and-loop, so it scales to the
+# 10k-claim CAT case. Seed the claims first (e.g. via a CATEventWorkflow or the portal) — this
+# script signals whatever is already running.
+#
+# The script only starts the batch job; it does not wait for the queue to drain, since draining
+# a large backlog through the agents can take much longer than a demo wants to block a terminal.
+# Inspect progress with `temporal batch describe --job-id <jobId>` or by polling the list endpoint.
+#
+# Prerequisites (separate terminals): `mise run temporal:dev`, `mise run temporal:worker`,
+# `mise run api`, and `mise run agents:worker` (needs Ollama) for the agents to close the claims.
+set -euo pipefail
+
+API_BASE_URL="${API_BASE_URL:-http://localhost:8080}"
+CLAIMS_URL="${API_BASE_URL}/api/v1/claims/property"
+
+usage() {
+    cat <<'EOF'
+Usage: demo-adjuster.sh
+
+Batch-signals enableAiAdjuster to every running property claim and exits immediately — it does
+not wait for the queue to drain to CLOSED.
+
+  -h, --help            Show this help.
+
+Env overrides: API_BASE_URL (default http://localhost:8080).
+EOF
+}
+
+# Extracts a top-level string field from a small JSON object without a jq dependency.
+json_field() {
+    local field="$1" json="$2"
+    grep -o "\"${field}\":\"[^\"]*\"" <<<"${json}" | head -1 | sed -E "s/\"${field}\":\"([^\"]*)\"/\1/"
+}
+
+require_api() {
+    if ! curl -s -o /dev/null --connect-timeout 3 "${API_BASE_URL}"; then
+        echo "Error: API not reachable at ${API_BASE_URL}. Start it with 'mise run api'." >&2
+        exit 1
+    fi
+}
+
+demo_drain() {
+    require_api
+
+    echo "==> Batch-signalling enableAiAdjuster over all running property claims"
+    local response job_id
+    response=$(curl -s -X POST "${CLAIMS_URL}/ai-adjuster:enable-batch")
+    job_id=$(json_field jobId "${response}")
+    if [[ -z "${job_id}" ]]; then
+        echo "Error: batch signal failed. Response: ${response}" >&2
+        exit 1
+    fi
+    echo "    started batch job ${job_id}"
+    echo "==> Check progress with:"
+    echo "      temporal batch describe --job-id ${job_id}"
+    echo "    or watch pending claims drop via ${CLAIMS_URL}?status=PENDING_APPROVAL"
+}
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        -h|--help) usage; exit 0 ;;
+        *) echo "Error: unknown option '$1'." >&2; usage >&2; exit 1 ;;
+    esac
+    shift
+done
+
+demo_drain

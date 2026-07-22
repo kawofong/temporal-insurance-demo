@@ -14,7 +14,7 @@ import io.nexusrpc.Service;
 public interface NotificationService {
 
     // Sends a notification to a recipient across the channels resolved from their preference
-    // (or the request's explicit channel override) and returns the per-channel outcome.
+    // and returns the per-channel outcome.
     @Operation
     NotificationResult sendNotification(NotificationRequest request);
 }

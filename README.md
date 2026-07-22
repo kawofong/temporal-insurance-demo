@@ -46,6 +46,34 @@ You can also trigger it from the Swagger UI at http://localhost:8080/swagger-ui.
 
 Then open the portal at http://localhost:5173 to walk through the demo.
 
+## AI-assisted claim adjustment (optional)
+
+A property claim normally waits for a **human** field adjuster to assess the damage and a
+**human** claim adjuster to approve or deny the payout. When switched to AI mode, the
+`PropertyClaimWorkflow` instead routes those two decisions to the OpenAI-Agents-SDK adjuster
+workflows in `agents/` — at any point while the claim is open, including mid-wait. See
+[`docs/ai-claim-adjustment-spec.md`](docs/ai-claim-adjustment-spec.md) and
+[`agents/README.md`](agents/README.md).
+
+The AI path needs one extra process — the Python agents worker (requires a local
+[Ollama](https://ollama.com) server):
+
+```bash
+mise run agents:install   # once
+mise run agents:worker    # 5th terminal, alongside the four above
+```
+
+End-to-end scenario (drives the REST API, then exits):
+
+```bash
+mise run demo:ai-adjuster      # batch-signal every running claim to AI, then exit
+```
+
+The drain scenario fires a single Temporal batch `enableAiAdjuster` signal over a Visibility
+query of every running property claim and returns immediately with the batch job id. Seed the
+pending claims first. Check progress with `temporal batch describe --job-id <jobId>` or by
+polling the claims list endpoint.
+
 ## Running against Temporal Cloud
 
 The demo can run against a Temporal Cloud namespace instead of the local dev server. The

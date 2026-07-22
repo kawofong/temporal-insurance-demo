@@ -37,8 +37,6 @@ public class PropertyPolicyController {
         return policyService.getPropertyPolicy(policyId);
     }
 
-    // --- Loss payee updates ---
-
     @PostMapping("/{policyId}/loss-payees")
     public CountResponse addLossPayee(
             @PathVariable String policyId, @RequestBody LossPayee lossPayee) {
@@ -52,8 +50,6 @@ public class PropertyPolicyController {
         policyService.removeLossPayee(policyId, lossPayeeId);
         return ResponseEntity.ok().build();
     }
-
-    // --- Lifecycle signals ---
 
     @PostMapping("/{policyId}/suspend")
     public ResponseEntity<Void> suspend(

@@ -1,0 +1,19 @@
+{
+  "claim": {
+    "claim_id": "clm-a1b2c3d4",
+    "policy_id": "pol-100200",
+    "policy_holder_id": "ph-42",
+    "cat_event_id": "cat-hurricane-2026",
+    "damage_tier": "MAJOR_DAMAGE",
+    "incident_description": "Hurricane-force winds tore off roughly half the roof shingles.",
+    "incident_date": 1760000000000,
+    "property_address": "742 Evergreen Terrace, Springfield",
+    "property_type": "SINGLE_FAMILY"
+  },
+  "coverage": {
+    "covered": true,
+    "coverage_type": "HO3",
+    "deductible": 1000,
+    "rejection_reason": null
+  }
+}

@@ -57,7 +57,7 @@ function DetailRows({ data, exclude = [] }) {
   ));
 }
 
-// Generic pop-up shell reused by the add and cancel interactions.
+// Generic pop-up shell reused by the add, cancel, and file-a-claim interactions.
 function Modal({ title, subtitle, onClose, children }) {
   return (
     <div className="policy-modal-backdrop" role="presentation" onClick={onClose}>
@@ -91,7 +91,6 @@ function PolicyDetails() {
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
 
-  // Pop-up state: which modal is open, plus its form values and status.
   const [activeModal, setActiveModal] = useState(null); // "add" | "cancel" | "fnol" | null
   const [addValues, setAddValues] = useState({});
   const [cancelReason, setCancelReason] = useState("");

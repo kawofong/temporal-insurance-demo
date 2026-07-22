@@ -96,7 +96,7 @@ public class ClaimService {
     }
 
     // Pages through the visibility results: only the current page is hydrated via Query,
-    // so a large backlog no longer stalls the caller. nextPageToken is null when done.
+    // so a large backlog does not stall the caller. nextPageToken is null when done.
     public AutoClaimListResponse listClaims(
             String policyHolderId, String policyId, String status, Integer pageSize, String pageToken) {
         String namespace = workflowClient.getOptions().getNamespace();

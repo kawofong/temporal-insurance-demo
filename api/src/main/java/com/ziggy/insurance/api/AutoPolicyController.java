@@ -38,8 +38,6 @@ public class AutoPolicyController {
         return policyService.getAutoPolicy(policyId);
     }
 
-    // --- Vehicle updates ---
-
     @PostMapping("/{policyId}/vehicles")
     public CountResponse addVehicle(@PathVariable String policyId, @RequestBody Vehicle vehicle) {
         int count = policyService.addVehicle(policyId, vehicle);
@@ -52,8 +50,6 @@ public class AutoPolicyController {
         policyService.removeVehicle(policyId, vehicleId);
         return ResponseEntity.ok().build();
     }
-
-    // --- Driver signals ---
 
     @PostMapping("/{policyId}/drivers")
     public ResponseEntity<Void> addDriver(
@@ -68,8 +64,6 @@ public class AutoPolicyController {
         policyService.removeDriver(policyId, driverId);
         return ResponseEntity.accepted().build();
     }
-
-    // --- Lifecycle signals ---
 
     @PostMapping("/{policyId}/suspend")
     public ResponseEntity<Void> suspend(

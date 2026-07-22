@@ -15,10 +15,16 @@ WORKFLOWS = [FieldAdjusterWorkflow, ClaimAdjusterWorkflow]
 async def main() -> None:
     client = await connect()
 
+    # Activity slots gate concurrent agent LLM calls (each runs as a model activity), so cap them
+    # to Ollama's OLLAMA_NUM_PARALLEL to avoid queueing requests the server can't serve at once.
+    # Workflow-task slots are set far higher so many parked agent workflows can make progress while
+    # those few activities run — e.g. a batch drain fanning out hundreds of claims at once.
     worker = Worker(
         client,
         task_queue=TASK_QUEUE,
         workflows=WORKFLOWS,
+        max_concurrent_activities=8,
+        max_concurrent_workflow_tasks=200,
     )
     print(f"Agents worker started, polling task queue '{TASK_QUEUE}'. Ctrl+C to exit.")
     await worker.run()

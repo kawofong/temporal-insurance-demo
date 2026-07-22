@@ -28,6 +28,10 @@ set +a
 description = "Set up the demo environment: create Nexus endpoints and seed demo data (idempotent)"
 run = "./scripts/demo-setup.sh"
 
+[tasks."demo:ai-adjuster"]
+description = "E2E: batch-signal enableAiAdjuster across all running property claims"
+run = "./scripts/demo-adjuster.sh"
+
 [tasks."temporal:worker"]
 description = "Run the Spring Boot Temporal worker against the local dev server"
 run = "./gradlew :workers:bootRun"
@@ -60,6 +64,11 @@ description = "Install Python agent dependencies with uv"
 dir = "agents"
 run = "uv sync"
 
+[tasks."agents:test"]
+description = "Run the Python agent unit tests (models, prompt builders, serialization contract)"
+dir = "agents"
+run = "uv run pytest"
+
 [tasks."agents:worker"]
 description = "Run the shared Temporal AI agents worker (requires a local Ollama server)"
 dir = "agents"
@@ -71,7 +80,7 @@ dir = "agents"
 run = "uv run python -m field_adjuster.starter"
 
 [tasks."agents:claim:starter"]
-description = "Submit a sample claim + policy to the claim-adjuster agent and print its determination"
+description = "Submit a sample claim + coverage + assessment to the claim-adjuster agent and print its decision"
 dir = "agents"
 run = "uv run python -m claim_adjuster.starter"
 

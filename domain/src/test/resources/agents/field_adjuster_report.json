@@ -1,0 +1,11 @@
+{
+  "assessment": {
+    "summary": "Roof and window damage with water intrusion to the ceiling and drywall.",
+    "estimated_cost": 24500
+  },
+  "approval": {
+    "adjuster_id": "adj-ai-agent",
+    "approved_payout_amount": 23500,
+    "notes": "Estimated repair cost minus the policy deductible."
+  }
+}

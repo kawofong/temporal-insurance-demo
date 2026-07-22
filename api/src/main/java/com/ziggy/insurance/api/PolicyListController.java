@@ -18,8 +18,6 @@ public class PolicyListController {
         this.policyService = policyService;
     }
 
-    // Lists running policies. When policyHolderId is supplied, results are limited to
-    // that policyholder; otherwise every running policy is returned.
     @GetMapping
     public PolicyListResponse list(
             @RequestParam(name = "policyHolderId", required = false) String policyHolderId) {

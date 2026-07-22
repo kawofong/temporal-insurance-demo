@@ -13,10 +13,12 @@ import com.ziggy.insurance.domains.claim.property.PropertyClaimWorkflow;
 import com.ziggy.insurance.domains.claim.search.ClaimSearchAttributes;
 import com.ziggy.insurance.domains.policy.TaskQueues;
 import com.google.protobuf.ByteString;
+import io.temporal.api.batch.v1.BatchOperationSignal;
 import io.temporal.api.common.v1.Payload;
 import io.temporal.api.workflow.v1.WorkflowExecutionInfo;
 import io.temporal.api.workflowservice.v1.ListWorkflowExecutionsRequest;
 import io.temporal.api.workflowservice.v1.ListWorkflowExecutionsResponse;
+import io.temporal.api.workflowservice.v1.StartBatchOperationRequest;
 import io.temporal.client.WorkflowClient;
 import io.temporal.client.WorkflowOptions;
 import io.temporal.client.WorkflowQueryException;
@@ -70,7 +72,8 @@ public class PropertyClaimService {
             null,                       // catEventId — null for portal-filed claims
             null,                       // damageTier — null for portal-filed claims
             req.incidentDescription(), req.incidentDate(),
-            req.propertyAddress(), req.propertyType());
+            req.propertyAddress(), req.propertyType(),
+            req.aiAdjusterEnabled());   // opt-in to AI adjustment at intake (default false)
 
         PropertyClaimWorkflow wf = workflowClient.newWorkflowStub(
             PropertyClaimWorkflow.class,
@@ -106,8 +109,48 @@ public class PropertyClaimService {
             .submitDamageAssessment(assessment);
     }
 
+    // Flips a single claim to AI adjustment. The signal is idempotent and safe to send whether
+    // the claim is parked at PENDING_DAMAGE_ASSESSMENT, PENDING_APPROVAL, or still earlier.
+    public void enableAiAdjuster(String claimId) {
+        workflowClient.newWorkflowStub(PropertyClaimWorkflow.class, workflowId(claimId))
+            .enableAiAdjuster();
+    }
+
+    // Flips every running property claim to AI adjustment at once via a Temporal batch signal
+    // operation driven by a Visibility query (§6.5) — not a client-side list-and-loop, so it scales
+    // to the 10k-claim catastrophe case. Takes no input: the batch always targets all RUNNING
+    // PropertyClaimWorkflow executions. Returns the batch job id. Note: the time-skipping test
+    // server does not implement ListWorkflowExecutions, so this path is verified E2E on a real dev
+    // server; the query it builds is unit-tested via buildAiAdjusterBatchQuery.
+    public String enableAiAdjusterBatch() {
+        String namespace = workflowClient.getOptions().getNamespace();
+        String jobId = UUID.randomUUID().toString();
+        StartBatchOperationRequest request = StartBatchOperationRequest.newBuilder()
+            .setNamespace(namespace)
+            .setJobId(jobId)
+            .setVisibilityQuery(buildAiAdjusterBatchQuery())
+            .setReason("AI takeover: enable AI adjuster")
+            .setSignalOperation(BatchOperationSignal.newBuilder()
+                .setSignal("enableAiAdjuster")
+                .setIdentity("property-claim-service")
+                .build())
+            .build();
+        workflowClient.getWorkflowServiceStubs().blockingStub().startBatchOperation(request);
+        log.info("Started enableAiAdjuster batch {} over query [{}]",
+            jobId, request.getVisibilityQuery());
+        return jobId;
+    }
+
+    // Pure, unit-testable builder for the batch Visibility query. Targets every Running property
+    // claim (a batch signal to a closed workflow is rejected); the signal itself is idempotent and
+    // only takes effect on claims parked on a human adjuster seam.
+    static String buildAiAdjusterBatchQuery() {
+        return "WorkflowType = '" + PropertyClaimWorkflow.class.getSimpleName() + "'"
+            + " AND ExecutionStatus = 'Running'";
+    }
+
     // Pages through the visibility results: only the current page is hydrated via Query,
-    // so a large backlog no longer stalls the caller. nextPageToken is null when done.
+    // so a large backlog does not stall the caller. nextPageToken is null when done.
     public PropertyClaimListResponse listClaims(
             String policyHolderId, String policyId, String status, Integer pageSize, String pageToken) {
         String namespace = workflowClient.getOptions().getNamespace();

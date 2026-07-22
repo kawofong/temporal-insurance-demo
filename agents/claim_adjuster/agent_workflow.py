@@ -1,5 +1,6 @@
 # Temporal workflow that runs the claim-adjuster agent.
-# Orchestrates an OpenAI Agents SDK agent that adjudicates a claim against its policy.
+# Orchestrates an OpenAI Agents SDK agent that makes the binding approve/deny decision for a
+# claim whose coverage has already been verified and whose damage has already been assessed.
 from __future__ import annotations
 
 from temporalio import workflow
@@ -10,48 +11,45 @@ with workflow.unsafe.imports_passed_through():
     from claim_adjuster.models import ClaimAdjudicationReport, ClaimAdjudicationRequest
 
 INSTRUCTIONS = """
-You are an experienced property insurance claim adjuster. Given a claim and the policy on
-file, determine whether the claim is covered and produce a coverage determination.
+You are an experienced property insurance claim (desk) adjuster. Coverage has already been
+verified and a field adjuster has already assessed the damage. Given the claim, the verified
+coverage, and the damage assessment, make the binding decision to approve or deny the payout.
 
 Apply these rules:
-1. The policy must be ACTIVE. A SUSPENDED, RENEWAL_PENDING, or CANCELLED policy is not covered.
-2. The incident date must fall on or between the policy effective date and expiry date
-   (all are epoch-millisecond timestamps).
-3. The claim's property address must match the policy's insured property address.
+1. If coverage is verified (covered=true), approve the claim. Set approved=true and
+   approved_payout_amount to the estimated repair cost minus the coverage deductible, never
+   below zero. Put a short justification in notes and set rejection_reason to null.
+2. If coverage is not verified (covered=false), or the assessment shows the loss is not a
+   payable claim, deny it. Set approved=false, approved_payout_amount to 0, and put a clear
+   explanation in rejection_reason.
 
-If all checks pass, set covered=true and:
-- coverage_type by property type: SINGLE_FAMILY -> HO3, CONDO -> HO6, RENTER -> RENTERS
-- deductible to 1000
-- rejection_reason to null
-
-If any check fails, set covered=false, coverage_type to "N/A", deductible to 0, and put a
-clear explanation in rejection_reason. Always explain your reasoning in the rationale field.
+Always use the adjuster id "adj-ai-agent" and explain your reasoning in the rationale field.
+Return only whole-dollar integer amounts.
 """.strip()
 
 
 def _build_prompt(request: ClaimAdjudicationRequest) -> str:
-    """Deterministically render the claim and policy into the agent's input text."""
+    """Deterministically render the claim, coverage, and assessment into the agent input."""
     claim = request.claim
-    policy = request.policy
-    prop = policy.property
+    coverage = request.coverage
+    assessment = request.assessment
     tier = claim.damage_tier.value if claim.damage_tier else "N/A (portal-filed)"
     return (
-        "POLICY ON FILE\n"
-        f"Policy ID: {policy.policy_id}\n"
-        f"Policy holder: {policy.policy_holder_id}\n"
-        f"Status: {policy.status.value}\n"
-        f"Effective date (epoch ms): {policy.effective_date}\n"
-        f"Expiry date (epoch ms): {policy.expiry_date}\n"
-        f"Insured property address: {prop.address}\n"
-        f"Insured property type: {prop.property_type}\n\n"
-        "CLAIM TO ADJUDICATE\n"
+        "CLAIM\n"
         f"Claim ID: {claim.claim_id}\n"
-        f"Policy ID on claim: {claim.policy_id}\n"
-        f"Incident date (epoch ms): {claim.incident_date}\n"
-        f"Property address on claim: {claim.property_address}\n"
-        f"Property type on claim: {claim.property_type}\n"
+        f"Policy ID: {claim.policy_id}\n"
+        f"Property type: {claim.property_type}\n"
+        f"Property address: {claim.property_address}\n"
         f"Damage tier: {tier}\n"
-        f"Incident description: {claim.incident_description}\n"
+        f"Incident description: {claim.incident_description}\n\n"
+        "VERIFIED COVERAGE\n"
+        f"Covered: {coverage.covered}\n"
+        f"Coverage type: {coverage.coverage_type}\n"
+        f"Deductible: ${coverage.deductible}\n"
+        f"Rejection reason: {coverage.rejection_reason}\n\n"
+        "DAMAGE ASSESSMENT\n"
+        f"Summary: {assessment.summary}\n"
+        f"Estimated repair cost: ${assessment.estimated_cost}\n"
     )
 
 

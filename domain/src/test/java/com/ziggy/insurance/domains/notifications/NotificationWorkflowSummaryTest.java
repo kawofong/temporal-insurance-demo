@@ -52,7 +52,6 @@ class NotificationWorkflowSummaryTest {
         }
     }
 
-    // Reads the workflow's history and returns the UI summary attached to every scheduled activity.
     private List<String> scheduledActivitySummaries(TestWorkflowEnvironment env) {
         GetWorkflowExecutionHistoryResponse history = env.getWorkflowClient()
             .getWorkflowServiceStubs()

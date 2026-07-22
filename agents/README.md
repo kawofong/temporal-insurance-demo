@@ -23,8 +23,8 @@ An AI agent that automates the property field-adjuster role: given a claim and i
 verified coverage, it produces a damage assessment (summary + estimated repair cost)
 and an approval decision (approved payout + notes). It uses the OpenAI Agents SDK,
 orchestrated durably by Temporal's `OpenAIAgentsPlugin`, running against a local
-[Ollama](https://ollama.com) model. It is standalone and does not integrate with the
-Java services.
+[Ollama](https://ollama.com) model. It can run standalone via its starter, and is also
+invoked by the Java `PropertyClaimWorkflow` on the AI path (see "Integration" below).
 
 ## Layout
 
@@ -71,29 +71,50 @@ model call run as an activity.
 
 # Claim Adjuster Agent
 
-An AI agent that automates the property claim-adjuster role: given a claim and the policy
-on file, it adjudicates coverage and produces a coverage determination (covered, coverage
-type, deductible, and — when denied — a rejection reason) plus a rationale. It checks that
-the policy is active, that the incident falls inside the policy term, and that the claim's
-property address matches the insured property. It reuses the same shared runtime and worker,
-and is standalone (no integration with the Java services).
+An AI agent that automates the property claim (desk) adjuster role: given a claim, its already
+-verified coverage, and the field adjuster's damage assessment, it makes the binding approve/deny
+decision. On approval it pays the estimated repair cost minus the deductible (never below zero)
+with a justification; on denial it records a rejection reason. It emits `approved`,
+`approved_payout_amount`, `adjuster_id` (`adj-ai-agent`), `notes`, `rejection_reason`, and a
+`rationale`. It needs no policy state — coverage was verified upstream. It reuses the same shared
+runtime and worker.
 
 ## Layout
 
 ```
 claim_adjuster/
-├── models.py          # policy + claim data model, ported from the Java property-policy domain
+├── models.py          # {claim, coverage, assessment} request + approve/deny report
 ├── agent_workflow.py  # ClaimAdjusterWorkflow (runs the agent)
-└── starter.py         # submits a sample claim + policy, prints the determination
+└── starter.py         # submits a sample claim + coverage + assessment, prints the decision
 ```
 
 ## Run
 
 With the shared worker running (`mise run agents:worker`) and Ollama available, submit the
-sample claim + policy:
+sample claim + coverage + assessment:
 
 ```bash
 mise run agents:claim:starter
 ```
 
-The starter prints a Claim Adjudication Report with the coverage determination and rationale.
+The starter prints a Claim Adjudication Report with the approve/deny decision and rationale.
+
+# Integration with the property claim workflow
+
+Both agents are also invoked by the Java `PropertyClaimWorkflow` as untyped child workflows when
+a claim is switched to AI adjustment (the `enableAiAdjuster` signal, or the `aiAdjusterEnabled`
+intake flag). The field-adjuster agent fills the damage-assessment seam and the claim-adjuster
+agent fills the approve/deny seam; everything they need is passed as the child-workflow argument,
+so no agent fetches state. The Java↔Python wire format is the `snake_case` JSON these Pydantic
+models define, mirrored by the Java records in
+`domain/.../claim/property/agents/` and guarded by a serialization contract test on each side. See
+`docs/ai-claim-adjustment-spec.md` for the full design, and the `demo:ai-adjuster` mise task
+for a runnable end-to-end scenario (needs this worker running against Ollama).
+
+# Tests
+
+Run the Python unit tests (models, prompt builders, and the cross-language serialization contract):
+
+```bash
+mise run agents:test
+```

@@ -58,6 +58,22 @@ public class PropertyClaimController {
         return ResponseEntity.accepted().build();
     }
 
+    // Flip a single claim to AI adjustment. Idempotent; safe whether the claim is parked at
+    // PENDING_DAMAGE_ASSESSMENT, PENDING_APPROVAL, or still running an earlier step.
+    @PostMapping("/{claimId}/ai-adjuster")
+    public ResponseEntity<Void> enableAiAdjuster(@PathVariable String claimId) {
+        claimService.enableAiAdjuster(claimId);
+        return ResponseEntity.accepted().build();
+    }
+
+    // Flip every running property claim to AI adjustment at once via a Temporal batch signal
+    // (§6.5). Takes no input: the batch always targets all RUNNING PropertyClaimWorkflow executions.
+    @PostMapping("/ai-adjuster:enable-batch")
+    public ResponseEntity<EnableAiAdjusterBatchResponse> enableAiAdjusterBatch() {
+        String jobId = claimService.enableAiAdjusterBatch();
+        return ResponseEntity.accepted().body(new EnableAiAdjusterBatchResponse(jobId));
+    }
+
     @GetMapping
     public PropertyClaimListResponse list(
             @RequestParam(required = false) String policyHolderId,
