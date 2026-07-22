@@ -63,15 +63,16 @@ mise run agents:install   # once
 mise run agents:worker    # 5th terminal, alongside the four above
 ```
 
-End-to-end scenario (drives the REST API and polls to completion):
+End-to-end scenario (drives the REST API, then exits):
 
 ```bash
-mise run demo:ai-adjuster      # batch-signal every running claim to AI, drain the queue
+mise run demo:ai-adjuster      # batch-signal every running claim to AI, then exit
 ```
 
 The drain scenario fires a single Temporal batch `enableAiAdjuster` signal over a Visibility
-query of every running property claim, then watches the claims parked on a human adjuster drain
-to `CLOSED`. Seed the pending claims first.
+query of every running property claim and returns immediately with the batch job id. Seed the
+pending claims first. Check progress with `temporal batch describe --job-id <jobId>` or by
+polling the claims list endpoint.
 
 ## Running against Temporal Cloud
 

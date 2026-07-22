@@ -8,24 +8,27 @@
 # 10k-claim CAT case. Seed the claims first (e.g. via a CATEventWorkflow or the portal) — this
 # script signals whatever is already running.
 #
+# The script only starts the batch job; it does not wait for the queue to drain, since draining
+# a large backlog through the agents can take much longer than a demo wants to block a terminal.
+# Inspect progress with `temporal batch describe --job-id <jobId>` or by polling the list endpoint.
+#
 # Prerequisites (separate terminals): `mise run temporal:dev`, `mise run temporal:worker`,
 # `mise run api`, and `mise run agents:worker` (needs Ollama) for the agents to close the claims.
 set -euo pipefail
 
 API_BASE_URL="${API_BASE_URL:-http://localhost:8080}"
 CLAIMS_URL="${API_BASE_URL}/api/v1/claims/property"
-POLL_TIMEOUT="${POLL_TIMEOUT:-180}"    # seconds to wait for the queue to drain (LLM paths are slow)
 
 usage() {
     cat <<'EOF'
 Usage: demo-adjuster.sh
 
-Batch-signals enableAiAdjuster to every running property claim and watches the claims parked on
-a human adjuster drain to CLOSED.
+Batch-signals enableAiAdjuster to every running property claim and exits immediately — it does
+not wait for the queue to drain to CLOSED.
 
   -h, --help            Show this help.
 
-Env overrides: API_BASE_URL (default http://localhost:8080), POLL_TIMEOUT (seconds).
+Env overrides: API_BASE_URL (default http://localhost:8080).
 EOF
 }
 
@@ -74,24 +77,10 @@ demo_drain() {
         echo "Error: batch signal failed. Response: ${response}" >&2
         exit 1
     fi
-    echo "    started batch job ${job_id} (inspect: temporal batch describe --job-id ${job_id})"
-
-    echo "==> Waiting for the AI adjusters to drain the queue..."
-    local deadline pending
-    deadline=$(( $(date +%s) + POLL_TIMEOUT ))
-    while :; do
-        pending=$(count_pending)
-        echo "    ${pending} claim(s) still pending"
-        if [[ "${pending}" -eq 0 ]]; then
-            echo "==> Queue drained: no property claims remain on a human adjuster."
-            return 0
-        fi
-        if [[ $(date +%s) -ge ${deadline} ]]; then
-            echo "Error: timed out after ${POLL_TIMEOUT}s with ${pending} claim(s) still pending." >&2
-            exit 1
-        fi
-        sleep 3
-    done
+    echo "    started batch job ${job_id}"
+    echo "==> Not waiting for the queue to drain. Check progress with:"
+    echo "      temporal batch describe --job-id ${job_id}"
+    echo "    or watch pending claims drop via ${CLAIMS_URL}?status=PENDING_APPROVAL"
 }
 
 while [[ $# -gt 0 ]]; do
