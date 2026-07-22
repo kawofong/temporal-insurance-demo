@@ -22,9 +22,11 @@ from agents import (
 # Single task queue shared by every agent workflow hosted on the shared worker.
 TASK_QUEUE = "ai-agents-task-queue"
 
-# Temporal connection (overridable for Cloud or alternate namespaces).
+# Temporal connection (overridable for Cloud or alternate namespaces). MISE_ENV=cloud loads
+# TEMPORAL_TARGET/TEMPORAL_NAMESPACE/TEMPORAL_API_KEY from .env.cloud (see mise.cloud.toml)
 TEMPORAL_TARGET = os.environ.get("TEMPORAL_TARGET", "localhost:7233")
 TEMPORAL_NAMESPACE = os.environ.get("TEMPORAL_NAMESPACE", "default")
+TEMPORAL_API_KEY = os.environ.get("TEMPORAL_API_KEY", "")
 
 # Ollama's OpenAI-compatible endpoint. The trailing /v1 is required by the client.
 OLLAMA_BASE_URL = os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434/v1")
@@ -70,6 +72,10 @@ async def connect() -> Client:
     return await Client.connect(
         TEMPORAL_TARGET,
         namespace=TEMPORAL_NAMESPACE,
+        # Cloud requires both an API key and TLS; the local dev server accepts neither, so both
+        # are derived from whether an API key was supplied rather than a separate on/off switch.
+        api_key=TEMPORAL_API_KEY or None,
+        tls=bool(TEMPORAL_API_KEY),
         plugins=[
             OpenAIAgentsPlugin(
                 model_provider=OllamaModelProvider(),

@@ -198,12 +198,10 @@ public class PropertyClaimWorkflowImpl implements PropertyClaimWorkflow {
         }
     }
 
-    // Deterministic, greppable child-workflow id + LLM-latency headroom, on the agents queue.
     private static ChildWorkflowOptions agentChildOptions(String workflowId) {
         return ChildWorkflowOptions.newBuilder()
             .setTaskQueue(TaskQueues.AI_AGENTS_TASK_QUEUE)
             .setWorkflowId(workflowId)
-            .setWorkflowExecutionTimeout(Duration.ofMinutes(5))
             .build();
     }
 

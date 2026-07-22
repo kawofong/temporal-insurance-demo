@@ -45,29 +45,8 @@ require_api() {
     fi
 }
 
-# Counts property claims currently in a given status via the list (Visibility) endpoint. The
-# demo's backlog fits one page; a production-scale drain would page through nextPageToken.
-count_by_status() {
-    local status="$1" response
-    response=$(curl -s "${CLAIMS_URL}?status=${status}&pageSize=1000")
-    grep -o '"claimId"' <<<"${response}" | wc -l | tr -d ' '
-}
-
-# Total claims still parked on a human adjuster seam (either pending status). A drained claim
-# has left both — CLOSED on approval or REJECTED on denial.
-count_pending() {
-    echo $(( $(count_by_status PENDING_DAMAGE_ASSESSMENT) + $(count_by_status PENDING_APPROVAL) ))
-}
-
 demo_drain() {
     require_api
-
-    local before
-    before=$(count_pending)
-    echo "==> ${before} property claim(s) currently parked on a human adjuster."
-    if [[ "${before}" -eq 0 ]]; then
-        echo "    Nothing parked to drain — seed some pending claims first, then re-run." >&2
-    fi
 
     echo "==> Batch-signalling enableAiAdjuster over all running property claims"
     local response job_id
@@ -78,7 +57,7 @@ demo_drain() {
         exit 1
     fi
     echo "    started batch job ${job_id}"
-    echo "==> Not waiting for the queue to drain. Check progress with:"
+    echo "==> Check progress with:"
     echo "      temporal batch describe --job-id ${job_id}"
     echo "    or watch pending claims drop via ${CLAIMS_URL}?status=PENDING_APPROVAL"
 }
