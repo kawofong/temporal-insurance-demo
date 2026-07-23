@@ -40,6 +40,13 @@ run = "./gradlew :workers:bootRun"
 description = "Run all Java tests"
 run = "./gradlew test"
 
+[tasks."clean"]
+description = "Clean build output: Gradle build/ dirs (all modules) and the portal Vite build (app/dist)"
+run = """
+./gradlew clean
+rm -rf app/dist
+"""
+
 [tasks."api"]
 description = "Run the Spring Boot HTTP API server against the local dev server"
 run = "./gradlew :api:bootRun"
